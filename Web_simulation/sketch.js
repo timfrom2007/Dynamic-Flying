@@ -1,6 +1,6 @@
 var currentX=500;
 var currentY=500;
-var targetX = 353;
+var targetX = 245;
 var targetY = 433;
 var prepointX=500; 
 var prepointY=550;
@@ -8,7 +8,7 @@ var turnCase=0;
 var count = 0;
 var radius = Math.floor(Math.pow(Math.pow((currentX-targetX),2) + Math.pow((currentY-targetY),2),0.5));
 var preturn = 1;
-
+var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
 var step=0;
 var range = [];
 
@@ -82,7 +82,7 @@ function draw() {
     
     var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
     drawpoint(currentX, currentY, 255);
-    drawCircle(currentX,currentY,cur_radius);
+    //drawCircle(currentX,currentY,cur_radius);
     stroke(22, 151, 131); //RGB&Opacity
     for(var x=targetX-3;x<targetX+4;x++){
         for(var y=targetY-3; y<targetY+4; y++){
@@ -97,6 +97,9 @@ function mousePressed() {
     var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
     var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
     var descision = turnDecision(currentX, currentY, prepointX, prepointY);
+    if(preturn==1){
+        preturn = descision;
+    }
     flightMove(currentX, currentY, turnCase, descision);
     cur_radius = distance(currentX, currentY, targetX, targetY);
     pre_radius = distance(prepointX, prepointY, targetX, targetY);
@@ -165,9 +168,9 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
                     if(map_weight[weight_i][weight_j]>=0){
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if(cur_radius>=dist){
-                            map_weight[weight_i][weight_j] += dist/cur_radius;
+                            map_weight[weight_i][weight_j] += dist/(cur_radius*cur_radius);
                             map_count[weight_i][weight_j] +=1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*100/map_count[weight_i][weight_j])); //RGB&Opacity
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*3000/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);  
                         }
                     }
@@ -184,9 +187,9 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
                     if(map_weight[weight_i][weight_j]>=0){
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if(cur_radius>=dist){
-                            map_weight[weight_i][weight_j] += dist/cur_radius;
+                            map_weight[weight_i][weight_j] += dist/(cur_radius*cur_radius);
                             map_count[weight_i][weight_j] +=1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*100/map_count[weight_i][weight_j])); //RGB&Opacity
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*3000/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);
                         }
                     }
@@ -503,6 +506,11 @@ function turnDecision(currX, currY, preX, preY){
     console.log("TrunMatrix: %s, %s, %s", turn_matrix[0],turn_matrix[1],turn_matrix[2]);
     
     if(cur_radius<pre_radius){  //半徑變小，表示靠近
+        if(bool_predecision==1){
+            bool_predecision = 0;
+            return preturn;
+        }
+        else{
         if(turn_matrix[0]>=turn_matrix[1]){
             if(turn_matrix[0]>turn_matrix[2]){
                 return 0;
@@ -540,8 +548,11 @@ function turnDecision(currX, currY, preX, preY){
         else{
             return 1;  
         }
+        
+    }
     }
     else{
+        bool_predecision = 1;
         if(preturn==0){
             preturn = 0;
             return 0;
@@ -561,6 +572,7 @@ function turnDecision(currX, currY, preX, preY){
                 return 2;
             }
         }
+        
     }
         
     
