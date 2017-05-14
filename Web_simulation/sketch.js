@@ -1,19 +1,20 @@
 var currentX=500;
 var currentY=500;
-var targetX = 683;
-var targetY = 483;
+var targetX = 353;
+var targetY = 433;
 var prepointX=500; 
 var prepointY=550;
 var turnCase=0;
 var count = 0;
 var radius = Math.floor(Math.pow(Math.pow((currentX-targetX),2) + Math.pow((currentY-targetY),2),0.5));
+var preturn = 1;
 
 var step=0;
 var range = [];
 
 var map_weight = [];  //Create a Map with Weight
 for (var i=0; i<2000; i++){    
-    map_weight[i] = []
+    map_weight[i] = [];
     for(var j=0; j<1200; j++){
         map_weight[i][j] = 0;
     }
@@ -21,7 +22,7 @@ for (var i=0; i<2000; i++){
 
 var map_count = [];  //Create a Map with Weight
 for (var i=0; i<2000; i++){    
-    map_count[i] = []
+    map_count[i] = [];
     for(var j=0; j<1200; j++){
         map_count[i][j] = 0;
     }
@@ -79,9 +80,9 @@ function setup() {
 
 function draw() {
     
-    
+    var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
     drawpoint(currentX, currentY, 255);
-    drawCircle(currentX,currentY,radius);
+    drawCircle(currentX,currentY,cur_radius);
     stroke(22, 151, 131); //RGB&Opacity
     for(var x=targetX-3;x<targetX+4;x++){
         for(var y=targetY-3; y<targetY+4; y++){
@@ -93,8 +94,8 @@ function draw() {
 
 function mousePressed() {
     count++;
-    var cur_radius = distance(currentX, currentY, targetX, targetY);
-    var pre_radius = distance(prepointX, prepointY, targetX, targetY);
+    var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
+    var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
     var descision = turnDecision(currentX, currentY, prepointX, prepointY);
     flightMove(currentX, currentY, turnCase, descision);
     cur_radius = distance(currentX, currentY, targetX, targetY);
@@ -103,18 +104,19 @@ function mousePressed() {
     
     redraw(); 
     console.log(count);
-    
-    if(count==30){
+    /*
+    if(count==60){
         var large=[0,0,0];
         background(255);
         for (var i=0; i<2000; i++){    
             for(var j=0; j<1200; j++){
                 if(map_weight[i][j]>0 && map_count[i][j]>0){
                     map_weight[i][j] = map_weight[i][j]/map_count[i][j];
-                    if(map_weight[i][j]>large[0]){
+                    if(map_weight[i][j]>=large[0]){
                         large[0] = map_weight[i][j];
                         large[1] = i;
                         large[2] = j;
+                        console.log("Largest: %s, X: %s, Y: %s", large[0], large[1], large[2]);
                     }
                     stroke(102, 211, 131, Math.floor(map_weight[i][j]*100) ); //RGB&Opacity
                     point(i,j);
@@ -122,8 +124,8 @@ function mousePressed() {
             }
         }
         
-        console.log("Largest: %s, X: %s, Y: %s", large[0], large[1], large[2]);
-    }
+        
+    }*/
     
 }
 
@@ -144,26 +146,26 @@ function drawCircle(x,y,radius){
 }
 
 function distance(x1, y1, x2, y2 ){
-    var d = Math.floor(Math.pow(Math.pow((x1-x2),2) + Math.pow((y1-y2),2),0.5));
+    var d = Math.pow(Math.pow((x1-x2),2) + Math.pow((y1-y2),2),0.5);
     return d;
 }
 
 
 function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
-    
-    var r_matrix = retation_matrix(currX, currY, preX, preY) ;  //旋轉矩陣
 
+    var r_matrix = retation_matrix(currX, currY, preX, preY) ;  //旋轉矩陣
+    
     
     if(cur_radius-pre_radius>0){  //半徑變大，表示遠離
         for(i=currX-cur_radius; i<=currX+cur_radius; i++){ 
-            for(j=currY; j<=currY+cur_radius; j++){
+            for(j=currY; j<currY+cur_radius; j++){
                 var weight_i = Math.floor((i-currX)*r_matrix[0] + (j-currY)*r_matrix[1]) + currX;
                 var weight_j = Math.floor((i-currX)*r_matrix[2] + (j-currY)*r_matrix[3]) + currY;
                 if(weight_i>=0 && weight_j>=0){  //避免rotate後，weight_i&j為負數型態
                     if(map_weight[weight_i][weight_j]>=0){
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if(cur_radius>=dist){
-                            map_weight[weight_i][weight_j] += Math.pow(dist/cur_radius, 2);
+                            map_weight[weight_i][weight_j] += dist/cur_radius;
                             map_count[weight_i][weight_j] +=1;
                             stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*100/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);  
@@ -174,15 +176,15 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
         }
     }
     else if(cur_radius-pre_radius<0){  //半徑變小，表示靠近
-        for(i=currX-radius; i<=currX+radius; i++){ 
-            for(j=currY; j>=currY-radius; j--){
+        for(i=currX-cur_radius; i<=currX+cur_radius; i++){ 
+            for(j=currY; j>currY-cur_radius; j--){
                 var weight_i = Math.floor((i-currX)*r_matrix[0] + (j-currY)*r_matrix[1]) + currX;
                 var weight_j = Math.floor((i-currX)*r_matrix[2] + (j-currY)*r_matrix[3]) + currY;
                 if(weight_i>=0 && weight_j>=0){  //避免rotate後，weight_i&j為負數型態
                     if(map_weight[weight_i][weight_j]>=0){
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if(cur_radius>=dist){
-                            map_weight[weight_i][weight_j] += Math.pow(dist/cur_radius, 2)
+                            map_weight[weight_i][weight_j] += dist/cur_radius;
                             map_count[weight_i][weight_j] +=1;
                             stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*100/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);
@@ -217,8 +219,8 @@ function turnDecision(currX, currY, preX, preY){
     var r_matrix = retation_matrix(currX, currY, preX, preY) ;  //旋轉矩陣
     var turn_matrix = [0,0,0];
     
-    var cur_radius = distance(currX, currY, targetX, targetY);
-    var pre_radius = distance(preX, preY, targetX, targetY);
+    var cur_radius = Math.floor(distance(currX, currY, targetX, targetY));
+    var pre_radius = Math.floor(distance(preX, preY, targetX, targetY));
     
     if(currX-preX==0){
         var slope = 0; //行進路線斜率
@@ -500,43 +502,65 @@ function turnDecision(currX, currY, preX, preY){
     }
     console.log("TrunMatrix: %s, %s, %s", turn_matrix[0],turn_matrix[1],turn_matrix[2]);
     
-    
-    if(turn_matrix[0]>=turn_matrix[1]){
-        if(turn_matrix[0]>turn_matrix[2]){
-            return 0;
-        }
-        else if(turn_matrix[0]==turn_matrix[2]){
-            var rand = Math.floor(Math.random()*2)
-            if(rand==0){
+    if(cur_radius<pre_radius){  //半徑變小，表示靠近
+        if(turn_matrix[0]>=turn_matrix[1]){
+            if(turn_matrix[0]>turn_matrix[2]){
                 return 0;
+            }
+            else if(turn_matrix[0]==turn_matrix[2]){
+                var rand = Math.floor(Math.random()*2)
+                if(rand==0){
+                    return 0;
+                }
+                else{
+                    return 2;
+                }
             }
             else{
                 return 2;
             }
         }
-        else{
-            return 2;
-        }
-    }
-    else if(turn_matrix[2]>=turn_matrix[1]){
-        if(turn_matrix[2]>turn_matrix[0]){
-            return 2;
-        }
-        else if(turn_matrix[0]==turn_matrix[2]){
-            var rand = Math.floor(Math.random()*2)
-            if(rand==0){
+        else if(turn_matrix[2]>=turn_matrix[1]){
+            if(turn_matrix[2]>turn_matrix[0]){
                 return 2;
+            }
+            else if(turn_matrix[0]==turn_matrix[2]){
+                var rand = Math.floor(Math.random()*2)
+                if(rand==0){
+                    return 2;
+                }
+                else{
+                    return 0;
+                }
             }
             else{
                 return 0;
             }
         }
         else{
-            return 0;
+            return 1;  
         }
     }
     else{
-        return 1;
+        if(preturn==0){
+            preturn = 0;
+            return 0;
+        }
+        else if(preturn==2){
+            preturn = 2;
+            return 2;
+        }
+        else{
+            var rand = Math.floor(Math.random()*2)
+            if(rand==0){
+                preturn = 0;
+                return 0;
+            }
+            else{
+                preturn = 2;
+                return 2;
+            }
+        }
     }
         
     
