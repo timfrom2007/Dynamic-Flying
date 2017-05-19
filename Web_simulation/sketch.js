@@ -1,7 +1,7 @@
 var currentX=500;
 var currentY=500;
-var targetX = 600;
-var targetY = 300;
+var targetX = 300;
+var targetY = 500;
 var prepointX=500; 
 var prepointY=550;
 var turnCase=0;
@@ -22,6 +22,14 @@ for (var i=0; i<2000; i++){
     for(var j=0; j<1200; j++){
         map_weight[i][j] = 0;
         map_count[i][j] = 0;
+    }
+}
+
+var test100 = [];
+for (var i=0; i<2000; i++){    
+    test100[i] = [];
+    for(var j=0; j<1200; j++){
+        test100[i][j] = 0;
     }
 }
 
@@ -87,9 +95,9 @@ function draw() {
 
 function mousePressed() {
     
-    //while(restart_count-1<400){
+    while(restart_count-1<80000){
         
-        //if(count!=100){
+        if(count!=200){
             count++;
             var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
             var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
@@ -127,7 +135,7 @@ function mousePressed() {
 
             large[1] = large[1] / large[3];
             large[2] = large[2] / large[3];
-            console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
+            //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
 
             var dist_error = distance(large[1], large[2], targetX, targetY);
 
@@ -142,7 +150,7 @@ function mousePressed() {
             console.log(count);
 
 
-        /*}
+        }
         else{
             count=0;
             if(targetX==699){
@@ -157,7 +165,7 @@ function mousePressed() {
                 restart();
             }, 200);
         }
-    }*/
+    }
     
     
 }
@@ -201,8 +209,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
                         if(cur_radius>=dist){
                             map_weight[weight_i][weight_j] += dist*2/Math.pow((cur_radius),2);
                             map_count[weight_i][weight_j] +=1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);  
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i,weight_j);  
                         }
                     }
                 }
@@ -213,8 +221,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if(cur_radius>=dist){
                             map_count[weight_i][weight_j] +=1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);  
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i,weight_j);  
                         }
                     }
                 }
@@ -232,8 +240,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
                         if(cur_radius>=dist){
                             map_weight[weight_i][weight_j] += dist*2/Math.pow((cur_radius),2);
                             map_count[weight_i][weight_j] +=1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i,weight_j);
                         }
                     }
                 }
@@ -244,8 +252,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius){
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if(cur_radius>=dist){
                             map_count[weight_i][weight_j] +=1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i,weight_j);
                         }
                     }
                 }
@@ -300,7 +308,7 @@ function turnDecision(currX, currY, preX, preY){
     var constant2 = calConstant(currX, currY, split_line2);  
     
     
-    console.log("currX: %s, currY: %s, preX: %s, preY: %s", currX, currY, preX, preY);
+    //console.log("currX: %s, currY: %s, preX: %s, preY: %s", currX, currY, preX, preY);
     
     
     if(currX-preX>0 && currY-preY<0){  //行進方向為↗
@@ -328,7 +336,7 @@ function turnDecision(currX, currY, preX, preY){
         turnCase = 8;
     }
     
-    console.log("TurnCase: ", turnCase);
+    //console.log("TurnCase: ", turnCase);
     if(cur_radius-pre_radius<=0){  //半徑變小，表示靠近
         for(i=currX-cur_radius; i<=currX+cur_radius; i++){ 
             for(j=currY; j>=currY-cur_radius; j--){
@@ -436,7 +444,7 @@ function turnDecision(currX, currY, preX, preY){
                                 break;
 
                             default:
-                                console.log("Error");
+                                //console.log("Error");
                             }   
                         }
                     }
@@ -550,7 +558,7 @@ function turnDecision(currX, currY, preX, preY){
                                 break;
 
                             default:
-                                console.log("Error");
+                                //console.log("Error");
                             }     
                         }
                     }
@@ -672,7 +680,7 @@ function retation_matrix(currX, currY, preX, preY){
             degree = degree*2;
         }
     }
-    console.log("Degree: %s", 180*degree/Math.PI);
+    //console.log("Degree: %s", 180*degree/Math.PI);
     var r_matrix = [Math.cos(degree), Math.sin(degree), -Math.sin(degree), Math.cos(degree)] ;  //旋轉矩陣
     
     return r_matrix;
@@ -689,7 +697,7 @@ function flightMove(currX, currY, turnCases, descision){
     
     prepointX = currX;
     prepointY = currY;
-    console.log("Descision: %s", descision)
+    //console.log("Descision: %s", descision)
     switch(Math.abs(turnCases)){
         case 1:
             if(descision==0){
@@ -804,7 +812,7 @@ function flightMove(currX, currY, turnCases, descision){
             }
             break;
         default:
-            console.log("Error");
+            //console.log("Error");
     }
     
 }
@@ -832,8 +840,8 @@ function restart(){
 }
 
     
-    if(targetX<=500 && targetX>=300){
-        if(targetY!=300){
+    if(targetX<=700 && targetX>=300){
+        if(targetY==300){
             targetX++;
             targetY=500;
         }
@@ -842,6 +850,7 @@ function restart(){
         }
         
     }
+    
     console.log("Tar: %s, %s", targetX, targetY);
     
 }
