@@ -5,7 +5,7 @@ var targetY = 500;
 var prepointX = 500;
 var prepointY = 550;
 var turnCase = 0;
-var step_count = 0;
+var count = 0;
 var radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
 var preturn = 1;
 var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
@@ -29,10 +29,13 @@ for (var i = 0; i < 2000; i++) {
 var guess_error = [];
 
 var total_guess_error = [];
+for (var i = 0; i < 200; i++) {
+    total_guess_error[i] = 0;
+}
 
 
 function setup() {
-    createCanvas(2000, 1200);
+    createCanvas(1200, 1200, WEBGL);
 
 
     var radius = distance(currentX, currentY, targetX, targetY);
@@ -40,24 +43,7 @@ function setup() {
 
     background(255);
     stroke(0);
-    drawCircle(currentX, currentY, radius);
-    line(0, 500, width, 500);
-    line(500, 0, 500, height);
-
-
-    stroke(22, 151, 131); //RGB&Opacity
-    for (var x = targetX - 3; x < targetX + 4; x++) {
-        for (var y = targetY - 3; y < targetY + 4; y++) {
-            point(x, y);
-        }
-    }
-
-    stroke(102, 41, 31); //RGB&Opacity
-    for (var x = prepointX - 3; x < prepointX + 4; x++) {
-        for (var y = prepointY - 3; y < prepointY + 4; y++) {
-            point(x, y);
-        }
-    }
+    line(-600, -600, -600, 600, 600, 600);
 
     var cur_radius = distance(currentX, currentY, targetX, targetY);
     var pre_radius = distance(prepointX, prepointY, targetX, targetY);
@@ -89,10 +75,10 @@ function draw() {
 
 function mousePressed() {
 
-    while (true) {
+    //while (true) {
 
-        if (step_count != 100) {
-            step_count++;
+        //if (count != 100) {
+            //count++;
             var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
             var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
             var descision = turnDecision(currentX, currentY, prepointX, prepointY);
@@ -136,32 +122,28 @@ function mousePressed() {
             if (targetX == 400 && targetY == 500) {
                 guess_error.push(dist_error);
             } else {
-                guess_error[step_count - 1] += dist_error;
+                guess_error[count - 1] += dist_error;
             }
             //redraw();
 
             //console.log(targetX);
 
 
-        } else {
-            step_count = 0;
+        /*} else {
+            count = 0;
             if (targetX == 600) {
 
                 for (var x = 0; x < 100; x++) {
-                    if (total_count==1) {
-                        total_guess_error.push(guess_error[x] / restart_count);
-                        guess_error[x]= 0;
-                    } else {
-                        total_guess_error[x] += (guess_error[x]/ restart_count);
-                    }
+                    
+                    total_guess_error[x] += (guess_error[x] / restart_count);
                 }
-                //console.log("restart_count %s", restart_count);
-                //console.log("total_count %s", total_count);
+                console.log("restart_count %s", restart_count);
+                console.log("total_count %s", total_count);
 
                 restart_next();
                 if (total_count == 100) {
                     for (var x = 0; x < 100; x++) {
-                        console.log("%s %s", Math.floor(total_guess_error[x] / 3), x + 1);
+                        console.log("%s %s", Math.floor(total_guess_error[x] / 100), x + 1);
                     }
                     break;
                 }
@@ -175,7 +157,7 @@ function mousePressed() {
         }
 
 
-    }
+    }*/
 
 
 }
@@ -787,11 +769,11 @@ function restart() {
     prepointX = 500;
     prepointY = 550;
     turnCase = 0;
-    step_count = 0;
+    count = 0;
     radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
     preturn = 1;
     bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
-
+    step = 0;
     range = [];
 
     for (var i = 0; i < 2000; i++) {
@@ -805,11 +787,11 @@ function restart() {
 
 
     if (targetX >= 400 && targetX <= 500) {
-        targetX += 5;
-        targetY -= 5;
+        targetX+=5;
+        targetY-=5;
     } else if (targetX > 500 && targetX <= 600) {
-        targetX += 5;
-        targetY += 5;
+        targetX+=5;
+        targetY+=5;
     }
 
     //console.log("Tar: %s, %s", targetX, targetY);
@@ -820,7 +802,7 @@ function restart_next() {
     targetX = 400;
     targetY = 500;
     restart_count = 1;
-    
+    guess_error = [];
     restart();
 }
 
