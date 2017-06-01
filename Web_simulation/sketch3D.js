@@ -35,38 +35,66 @@ for (var i = 0; i < 200; i++) {
 
 
 function setup() {
-    createCanvas(1200, 1200, WEBGL);
+    createCanvas(600, 600, WEBGL);
 
 
     var radius = distance(currentX, currentY, targetX, targetY);
 
 
-    background(255);
-    stroke(0);
-    line(-600, -600, -600, 600, 600, 600);
 
+
+
+
+
+
+    /*
     var cur_radius = distance(currentX, currentY, targetX, targetY);
     var pre_radius = distance(prepointX, prepointY, targetX, targetY);
     addWeight(currentX, currentY, prepointX, prepointY, cur_radius, pre_radius);
-
+    */
 
 
 }
 
 
 function draw() {
+    for (var i = 0; i < 500; i += 100) {
+        push();
+        fill(i * 0.1, 100, 100);
 
-    var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
+        //line
+        translate(0, 100, 0);
+        line(-100, 0, i, 100, 0, i);
 
-    drawpoint(currentX, currentY, 255);
-    //drawCircle(currentX,currentY,cur_radius);
-    stroke(22, 151, 131); //RGB&Opacity
-    for (var x = targetX - 3; x < targetX + 4; x++) {
-        for (var y = targetY - 3; y < targetY + 4; y++) {
-            point(x, y);
-        }
+        //triangles
+        translate(0, 100, 0);
+        triangle(
+            0, sin(i + frameCount * 0.1) * 10, i,
+            60, 60, i, -60, 60, i);
+
+        //quad
+        translate(0, 200, 0);
+        quad(-100, i, 0,
+            100, i, 0, -100, 100, i,
+            100, 100, i
+        );
+        pop();
     }
 
+
+
+    /*
+        var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
+
+        drawpoint(currentX, currentY, 255);
+        //drawCircle(currentX,currentY,cur_radius);
+        stroke(22, 151, 131); //RGB&Opacity
+        for (var x = targetX - 3; x < targetX + 4; x++) {
+            for (var y = targetY - 3; y < targetY + 4; y++) {
+                point(x, y);
+            }
+        }
+    */
 
 
 
@@ -77,59 +105,59 @@ function mousePressed() {
 
     //while (true) {
 
-        //if (count != 100) {
-            //count++;
-            var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
-            var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
-            var descision = turnDecision(currentX, currentY, prepointX, prepointY);
-            if (preturn == 1) {
-                preturn = descision;
-            }
-            flightMove(currentX, currentY, turnCase, descision);
-            cur_radius = distance(currentX, currentY, targetX, targetY);
-            pre_radius = distance(prepointX, prepointY, targetX, targetY);
-            addWeight(currentX, currentY, prepointX, prepointY, cur_radius, pre_radius);
+    //if (count != 100) {
+    //count++;
+    var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
+    var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
+    var descision = turnDecision(currentX, currentY, prepointX, prepointY);
+    if (preturn == 1) {
+        preturn = descision;
+    }
+    flightMove(currentX, currentY, turnCase, descision);
+    cur_radius = distance(currentX, currentY, targetX, targetY);
+    pre_radius = distance(prepointX, prepointY, targetX, targetY);
+    addWeight(currentX, currentY, prepointX, prepointY, cur_radius, pre_radius);
 
-            var large = [0, 0, 0, 0];
-            for (var i = 0; i < 2000; i++) {
-                for (var j = 0; j < 1200; j++) {
-                    if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                        if (map_weight[i][j] / map_count[i][j] > large[0]) {
-                            large[0] = map_weight[i][j] / map_count[i][j];
-                        }
-                    }
+    var large = [0, 0, 0, 0];
+    for (var i = 0; i < 2000; i++) {
+        for (var j = 0; j < 1200; j++) {
+            if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
+                if (map_weight[i][j] / map_count[i][j] > large[0]) {
+                    large[0] = map_weight[i][j] / map_count[i][j];
                 }
             }
+        }
+    }
 
-            for (var i = 0; i < 2000; i++) {
-                for (var j = 0; j < 1200; j++) {
-                    if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                        if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.97) {
-                            large[1] += i;
-                            large[2] += j;
-                            large[3] += 1;
-                        }
-                    }
+    for (var i = 0; i < 2000; i++) {
+        for (var j = 0; j < 1200; j++) {
+            if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
+                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.97) {
+                    large[1] += i;
+                    large[2] += j;
+                    large[3] += 1;
                 }
             }
+        }
+    }
 
-            large[1] = large[1] / large[3];
-            large[2] = large[2] / large[3];
-            //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
+    large[1] = large[1] / large[3];
+    large[2] = large[2] / large[3];
+    //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
 
-            var dist_error = distance(large[1], large[2], targetX, targetY);
+    var dist_error = distance(large[1], large[2], targetX, targetY);
 
-            if (targetX == 400 && targetY == 500) {
-                guess_error.push(dist_error);
-            } else {
-                guess_error[count - 1] += dist_error;
-            }
-            //redraw();
+    if (targetX == 400 && targetY == 500) {
+        guess_error.push(dist_error);
+    } else {
+        guess_error[count - 1] += dist_error;
+    }
+    //redraw();
 
-            //console.log(targetX);
+    //console.log(targetX);
 
 
-        /*} else {
+    /*} else {
             count = 0;
             if (targetX == 600) {
 
@@ -787,11 +815,11 @@ function restart() {
 
 
     if (targetX >= 400 && targetX <= 500) {
-        targetX+=5;
-        targetY-=5;
+        targetX += 5;
+        targetY -= 5;
     } else if (targetX > 500 && targetX <= 600) {
-        targetX+=5;
-        targetY+=5;
+        targetX += 5;
+        targetY += 5;
     }
 
     //console.log("Tar: %s, %s", targetX, targetY);
