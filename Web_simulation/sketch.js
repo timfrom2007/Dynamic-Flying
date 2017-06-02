@@ -118,7 +118,7 @@ function mousePressed() {
             for (var i = 0; i < 2000; i++) {
                 for (var j = 0; j < 1200; j++) {
                     if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                        if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.97) {
+                        if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {
                             large[1] += i;
                             large[2] += j;
                             large[3] += 1;

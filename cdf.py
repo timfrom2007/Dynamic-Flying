@@ -3,14 +3,11 @@ import numpy as np
 import cmath
 fig = plt.figure()
 ax = fig.add_subplot(111)
-ax.set_xlabel('flightMove')
-ax.set_ylabel('Error')
-
-ax.set_xlim(1, 200)
-ax.set_ylim(0, 180)
+ax.set_xlabel('Distance error')
+ax.set_ylabel('probability')
 
 err = []
-file = open('error_to_points3.txt')
+file = open('error_to_points.txt')
 for line in file:
     err.append(line)
     #print (line)
@@ -22,5 +19,10 @@ for i in range(array_length):
     err[i] = float(err[i])
 
 
-ax.plot(err,lw=3)
+sorted_data = np.sort(err)
+
+yvals=np.arange(len(sorted_data))/float(len(sorted_data)-1)
+
+plt.plot(sorted_data,yvals)
+
 plt.show()
