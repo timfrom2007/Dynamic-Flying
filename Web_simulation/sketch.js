@@ -25,6 +25,11 @@ for (var i = 0; i < 2000; i++) {
     }
 }
 
+var each_predict = [];
+for (var i = 0; i < 100; i++) {
+    each_predict[i] = 0;
+}
+
 var guess_error = [];
 
 var total_guess_error = [];
@@ -143,7 +148,7 @@ function mousePressed() {
             //console.log(targetX);
 
 
-        /*} else {
+       /* } else {
             step_count = 0;
             if (targetX == 600) {
 
@@ -209,8 +214,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
 
 
     if (cur_radius - pre_radius > 0) { //半徑變大，表示遠離
-        for (i = currX - cur_radius-5; i <= currX + cur_radius+5; i++) {   //-5+5用來額外預估
-            for (j = currY; j <= currY + cur_radius+5; j++) {
+        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {   //-5+5用來額外預估
+            for (j = currY; j <= currY + cur_radius+10; j++) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) { //避免rotate後，weight_i&j為負數型態
@@ -237,7 +242,7 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
                             map_count[weight_i][weight_j] += 1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);  
                         }
                     }
@@ -245,8 +250,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
             }
         }
     } else if (cur_radius - pre_radius < 0) { //半徑變小，表示靠近
-        for (i = currX - cur_radius-5; i <= currX + cur_radius+5; i++) {  //-5+5用來額外預估
-            for (j = currY; j >= currY - cur_radius-5; j--) {
+        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {  //-5+5用來額外預估
+            for (j = currY; j >= currY - cur_radius-10; j--) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) { //避免rotate後，weight_i&j為負數型態
@@ -262,7 +267,7 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                                 map_weight[weight_i][weight_j] += (cur_radius*2-dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);
                         }
                     }
@@ -274,7 +279,7 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
                             map_count[weight_i][weight_j] += 1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2500/map_count[weight_i][weight_j])); //RGB&Opacity
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
                             point(weight_i,weight_j);
                         }
                     }
@@ -352,8 +357,8 @@ function turnDecision(currX, currY, preX, preY) {
 
     //console.log("TurnCase: ", turnCase);
     if (cur_radius - pre_radius <= 0) { //半徑變小，表示靠近
-        for (i = currX - cur_radius-5; i <= currX + cur_radius+5; i++) {
-            for (j = currY; j >= currY - cur_radius-5; j--) {
+        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {
+            for (j = currY; j >= currY - cur_radius-10; j--) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) {
@@ -466,8 +471,8 @@ function turnDecision(currX, currY, preX, preY) {
             }
         }
     } else if (cur_radius - pre_radius > 0) { //半徑變大，表示遠離
-        for (i = currX - cur_radius-5; i <= currX + cur_radius+5; i++) {
-            for (j = currY; j <= currY + cur_radius+5; j++) {
+        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {
+            for (j = currY; j <= currY + cur_radius+10; j++) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) {
@@ -604,7 +609,7 @@ function turnDecision(currX, currY, preX, preY) {
                 if (turn_matrix[2] > turn_matrix[0]) {
                     return 2;
                 } else if (turn_matrix[0] == turn_matrix[2]) {
-                    var rand = Math.floor(Math.random() * 2)
+                    var rand = Math.floor(Math.random() * 2);
                     if (rand == 0) {
                         return 2;
                     } else {
@@ -627,7 +632,7 @@ function turnDecision(currX, currY, preX, preY) {
             preturn = 2;
             return 2;
         } else {
-            var rand = Math.floor(Math.random() * 2)
+            var rand = Math.floor(Math.random() * 2);
             if (rand == 0) {
                 preturn = 0;
                 return 0;
@@ -638,7 +643,7 @@ function turnDecision(currX, currY, preX, preY) {
         }
     }
     
-
+    
 
 
 }
@@ -817,13 +822,15 @@ function restart() {
     }
 
 
-    if (targetX >= 400 && targetX <= 500) {
-        targetX += 5;
-        targetY -= 5;
-    } else if (targetX > 500 && targetX <= 600) {
-        targetX += 5;
-        targetY += 5;
+    var x_rand = Math.floor((Math.random() * 6) + 5)*20;
+    var y_rand = Math.floor((Math.random() * 6) + 5)*20;
+    var x_bool =  Math.floor((Math.random() * 1) + 1);
+    if(x_bool<1){
+        x_rand = x_rand*-1;
     }
+    targetX = 500 + x_rand;
+    targetY = 500 - y_rand; 
+    
 
     //console.log("Tar: %s, %s", targetX, targetY);
 

@@ -10,7 +10,7 @@ ax.set_xlim(1, 200)
 ax.set_ylim(0, 180)
 
 err = []
-file = open('error_to_points3.txt')
+file = open('error_to_points.txt')
 for line in file:
     err.append(line)
     #print (line)
