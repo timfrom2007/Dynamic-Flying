@@ -1,7 +1,7 @@
 var currentX = 500;
 var currentY = 500;
-var targetX = 350;
-var targetY = 400;
+var targetX = 400;
+var targetY = 500;
 var prepointX = 500;
 var prepointY = 550;
 var turnCase = 0;
@@ -12,7 +12,6 @@ var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
 var range = [];
 var restartbool = 0;
 var restart_count = 1; //計算總共重新幾次
-var total_count = 1;
 
 var map_weight = []; //Create a Map with Weight
 var map_count = [];
@@ -25,14 +24,15 @@ for (var i = 0; i < 2000; i++) {
     }
 }
 
-var each_predict = [];
-for (var i = 0; i < 100; i++) {
-    each_predict[i] = 0;
-}
-
 var guess_error = [];
+var dist_error_cdf = [];
+/*for (var i = 0; i < 100; i++) {
+    dist_error_cdf[i] = 0;
+}*/
 
-var total_guess_error = [];
+
+
+var total_guess_error=[];
 
 
 function setup() {
@@ -93,11 +93,11 @@ function draw() {
 
 function mousePressed() {
 
-    //while (true) {
+    while (true) {
 
-        //if (step_count != 100) {
+        if (step_count != 100) {
             step_count++;
-            console.log(step_count);
+            //console.log(step_count);
             var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
             var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
             var descision = turnDecision(currentX, currentY, prepointX, prepointY);
@@ -136,9 +136,22 @@ function mousePressed() {
             large[2] = large[2] / large[3];
             //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
 
-            var dist_error = distance(large[1], large[2], targetX, targetY);
+            if (step_count == 30) {
+                large = [0, 0, 0, 0];
+                for (var i = 0; i < 2000; i++) {
+                    map_weight[i] = [];
+                    map_count[i] = [];
+                    for (var j = 0; j < 1200; j++) {
+                        map_weight[i][j] = 0;
+                        map_count[i][j] = 0;
+                    }
+                }
+            }
 
-            if (targetX == 400 && targetY == 500) {
+            var dist_error = Math.floor(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
+            
+            
+            if (restart_count == 1 || restart_count==31) {
                 guess_error.push(dist_error);
             } else {
                 guess_error[step_count - 1] += dist_error;
@@ -146,41 +159,42 @@ function mousePressed() {
             //redraw();
 
             //console.log(targetX);
-
-
-       /* } else {
-            step_count = 0;
-            if (targetX == 600) {
-
-                for (var x = 0; x < 100; x++) {
-                    if (total_count==1) {
-                        total_guess_error.push(guess_error[x] / restart_count);
-                        guess_error[x]= 0;
-                    } else {
-                        total_guess_error[x] += (guess_error[x]/ restart_count);
-                    }
-                }
-                //console.log("restart_count %s", restart_count);
-                //console.log("total_count %s", total_count);
-
-                restart_next();
-                if (total_count == 100) {
-                    for (var x = 0; x < 100; x++) {
-                        console.log("%s %s", Math.floor(total_guess_error[x] / 3), x + 1);
-                    }
-                    break;
-                }
-                total_count++;
-
-            } else {
-                restart();
+            
+            if(step_count==98){
+                dist_error_cdf.push(dist_error);
             }
+            
 
+        } else {
+            
+            
+
+            for (var x = 0; x < 100; x++) {
+                if (restart_count == 1) {
+                    total_guess_error.push(guess_error[x]);
+                    guess_error[x] = 0;
+                } else {
+                    total_guess_error[x] += guess_error[x];
+                    guess_error[x] = 0;
+                }
+            }
+            
+            if (restart_count == 1000) {
+                
+                for (var x = 0; x < 100; x++) {
+                    //console.log("%s %s", Math.floor(total_guess_error[x] / restart_count), x + 1);
+                    total_guess_error[x] = total_guess_error[x]/restart_count;
+                }
+                console.log(total_guess_error);
+                console.log(dist_error_cdf);
+                break;
+            }
+            restart();
 
         }
 
 
-    }*/
+    }
 
 
 }
@@ -204,6 +218,16 @@ function drawCircle(x, y, radius) {
 
 function distance(x1, y1, x2, y2) {
     var d = Math.pow(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2), 0.5);
+
+    if (d > 80) {
+        d = normalRandomScaled(d, 16.7);
+    } else if (80 >= d && d > 40) {
+        d = normalRandomScaled(d, 5.3);
+    } else {
+        d = d;
+    }
+
+
     return d;
 }
 
@@ -214,24 +238,23 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
 
 
     if (cur_radius - pre_radius > 0) { //半徑變大，表示遠離
-        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {   //-5+5用來額外預估
-            for (j = currY; j <= currY + cur_radius+10; j++) {
+        for (i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5用來額外預估
+            for (j = currY; j <= currY + cur_radius + 10; j++) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) { //避免rotate後，weight_i&j為負數型態
                     if (map_weight[weight_i][weight_j] >= 0) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
-                            if(dist<=cur_radius){
+                            if (dist <= cur_radius) {
                                 map_weight[weight_i][weight_j] += dist / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
-                            }
-                            else{
-                                map_weight[weight_i][weight_j] += (cur_radius*2-dist) / Math.pow((cur_radius), 2);
+                            } else {
+                                map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);  
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -242,33 +265,32 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
                             map_count[weight_i][weight_j] += 1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);  
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
             }
         }
     } else if (cur_radius - pre_radius < 0) { //半徑變小，表示靠近
-        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {  //-5+5用來額外預估
-            for (j = currY; j >= currY - cur_radius-10; j--) {
+        for (i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5用來額外預估
+            for (j = currY; j >= currY - cur_radius - 10; j--) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) { //避免rotate後，weight_i&j為負數型態
                     if (map_weight[weight_i][weight_j] >= 0) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
-                            
-                            if(dist<=cur_radius){
+
+                            if (dist <= cur_radius) {
                                 map_weight[weight_i][weight_j] += dist / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
-                            }
-                            else{
-                                map_weight[weight_i][weight_j] += (cur_radius*2-dist) / Math.pow((cur_radius), 2);
+                            } else {
+                                map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -279,8 +301,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
                             map_count[weight_i][weight_j] += 1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j]*2000/map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i,weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -357,8 +379,8 @@ function turnDecision(currX, currY, preX, preY) {
 
     //console.log("TurnCase: ", turnCase);
     if (cur_radius - pre_radius <= 0) { //半徑變小，表示靠近
-        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {
-            for (j = currY; j >= currY - cur_radius-10; j--) {
+        for (i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
+            for (j = currY; j >= currY - cur_radius - 10; j--) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) {
@@ -471,8 +493,8 @@ function turnDecision(currX, currY, preX, preY) {
             }
         }
     } else if (cur_radius - pre_radius > 0) { //半徑變大，表示遠離
-        for (i = currX - cur_radius-10; i <= currX + cur_radius+10; i++) {
-            for (j = currY; j <= currY + cur_radius+10; j++) {
+        for (i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
+            for (j = currY; j <= currY + cur_radius + 10; j++) {
                 var weight_i = Math.floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 var weight_j = Math.floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) {
@@ -584,9 +606,9 @@ function turnDecision(currX, currY, preX, preY) {
             }
         }
     }
-    console.log("TrunMatrix: %s, %s, %s", turn_matrix[0].toFixed(5), turn_matrix[1].toFixed(5), turn_matrix[2].toFixed(5));
+    //console.log("TrunMatrix: %s, %s, %s", turn_matrix[0].toFixed(5), turn_matrix[1].toFixed(5), turn_matrix[2].toFixed(5));
 
-    
+
     if (cur_radius < pre_radius) { //半徑變小，表示靠近
         if (bool_predecision == 1) {
             bool_predecision = 0;
@@ -642,8 +664,8 @@ function turnDecision(currX, currY, preX, preY) {
             }
         }
     }
-    
-    
+
+
 
 
 }
@@ -806,11 +828,11 @@ function restart() {
     prepointY = 550;
     turnCase = 0;
     step_count = 0;
-    radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
+    
     preturn = 1;
     bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
+    
 
-    range = [];
 
     for (var i = 0; i < 2000; i++) {
         map_weight[i] = [];
@@ -822,15 +844,15 @@ function restart() {
     }
 
 
-    var x_rand = Math.floor((Math.random() * 6) + 5)*20;
-    var y_rand = Math.floor((Math.random() * 6) + 5)*20;
-    var x_bool =  Math.floor((Math.random() * 1) + 1);
-    if(x_bool<1){
-        x_rand = x_rand*-1;
+    var x_rand = Math.floor((Math.random() * 6) + 5) * 20;
+    var y_rand = Math.floor((Math.random() * 6) + 5) * 20;
+    var x_bool = Math.floor((Math.random() * 1) + 1);
+    if (x_bool < 1) {
+        x_rand = x_rand * -1;
     }
     targetX = 500 + x_rand;
-    targetY = 500 - y_rand; 
-    
+    targetY = 500 - y_rand;
+    radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
 
     //console.log("Tar: %s, %s", targetX, targetY);
 
@@ -840,7 +862,7 @@ function restart_next() {
     targetX = 400;
     targetY = 500;
     restart_count = 1;
-    
+
     restart();
 }
 
@@ -853,6 +875,56 @@ function createArray(length) {
         var args = Array.prototype.slice.call(arguments, 1);
         while (i--) arr[length - 1 - i] = createArray.apply(this, args);
     }
-
     return arr;
+}
+
+//以下為標準差部分
+var spareRandom = null;
+
+function normalRandom() {
+    var val, u, v, s, mul;
+
+    if (spareRandom !== null) {
+        val = spareRandom;
+        spareRandom = null;
+    } else {
+        do {
+            u = Math.random() * 2 - 1;
+            v = Math.random() * 2 - 1;
+
+            s = u * u + v * v;
+        } while (s === 0 || s >= 1);
+
+        mul = Math.sqrt(-2 * Math.log(s) / s);
+
+        val = u * mul;
+        spareRandom = v * mul;
+    }
+
+    return val / 14; // 7 standard deviations on either side
+}
+
+function normalRandomInRange(min, max) {
+    var val;
+    do {
+        val = normalRandom();
+    } while (val < min || val > max);
+
+    return val;
+}
+
+function normalRandomScaled(mean, stddev) {
+    var r = normalRandomInRange(-1, 1);
+
+    r = r * stddev + mean;
+
+    return Math.round(r);
+}
+
+function lnRandomScaled(gmean, gstddev) {
+    var r = normalRandomInRange(-1, 1);
+
+    r = r * Math.log(gstddev) + Math.log(gmean);
+
+    return Math.round(Math.exp(r));
 }

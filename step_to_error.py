@@ -6,11 +6,11 @@ ax = fig.add_subplot(111)
 ax.set_xlabel('flightMove')
 ax.set_ylabel('Error')
 
-ax.set_xlim(1, 200)
-ax.set_ylim(0, 180)
+ax.set_xlim(1, 100)
+ax.set_ylim(0, 300)
 
 err = []
-file = open('error_to_points.txt')
+file = open('distance_error.txt')
 for line in file:
     err.append(line)
     #print (line)

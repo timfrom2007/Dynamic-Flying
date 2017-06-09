@@ -7,7 +7,7 @@ ax.set_xlabel('Distance error')
 ax.set_ylabel('probability')
 
 err = []
-file = open('error_to_points.txt')
+file = open('cdf.txt')
 for line in file:
     err.append(line)
     #print (line)
