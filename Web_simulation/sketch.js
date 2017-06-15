@@ -1,7 +1,7 @@
 var currentX = 500;
 var currentY = 500;
-var targetX = 480;
-var targetY = 340;
+var targetX = 350;
+var targetY = 500;
 var prepointX = 500;
 var prepointY = 550;
 var turnCase = 0;
@@ -107,10 +107,7 @@ function mousePressed() {
             }
     
             if(cur_radius<=20){
-                var move_distance = 15;
-                if(cur_radius<=15){
-                    move_distance = 10;
-                }
+                var move_distance = 10;
                 if(cur_radius<=10){
                     move_distance = 5;
                 }
@@ -863,7 +860,7 @@ function restart() {
         }
     }
 
-
+    /*
     var x_rand = Math.floor((Math.random() * 6) + 5) * 20;
     var y_rand = Math.floor((Math.random() * 6) + 5) * 20;
     var x_bool = Math.floor((Math.random() * 1) + 1);
@@ -872,6 +869,22 @@ function restart() {
     }
     targetX = 500 + x_rand;
     targetY = 500 - y_rand;
+    */
+    
+    if(targetY==400){
+        if(targetX==354){
+            targetX = 645;
+        }
+        targetX+=1;
+        targetY = 500;
+        
+    }
+    else{
+        targetY -= 1;
+    }
+    
+    
+    
     radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
 
     //console.log("Tar: %s, %s", targetX, targetY);
