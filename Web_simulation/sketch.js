@@ -6,6 +6,7 @@ var prepointX = 500;
 var prepointY = 550;
 var turnCase = 0;
 var step_count = 0;
+var re_calculate =0; //重新計算權重
 var preturn = 1;
 var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
 var range = [];
@@ -106,7 +107,13 @@ function mousePressed() {
             }
     
             if(cur_radius<=20){
-                var move_distance = cur_radius;
+                var move_distance = 15;
+                if(cur_radius<=15){
+                    move_distance = 10;
+                }
+                if(cur_radius<=10){
+                    move_distance = 5;
+                }
             }
 
             flightMove(currentX, currentY, turnCase, descision, move_distance);
@@ -141,7 +148,7 @@ function mousePressed() {
             large[2] = large[2] / large[3];
             //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
 
-            if (step_count == 30) {
+            if (cur_radius<=20 && re_calculate==0) {
                 large = [0, 0, 0, 0];
                 for (var i = 0; i < 2000; i++) {
                     map_weight[i] = [];
@@ -151,6 +158,7 @@ function mousePressed() {
                         map_count[i][j] = 0;
                     }
                 }
+                re_calculate = 1;
             }
 
             var dist_error = Math.floor(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
