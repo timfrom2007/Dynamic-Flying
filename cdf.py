@@ -20,6 +20,13 @@ for i in range(array_length):
 
 
 sorted_data = np.sort(err)
+total = 0
+for i in range(len(sorted_data)):
+    total += sorted_data[i]
+
+total /= 1000
+
+print(total)
 
 yvals=np.arange(len(sorted_data))/float(len(sorted_data)-1)
 

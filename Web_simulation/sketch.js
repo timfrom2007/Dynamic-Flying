@@ -1,12 +1,11 @@
 var currentX = 500;
 var currentY = 500;
-var targetX = 400;
-var targetY = 500;
+var targetX = 480;
+var targetY = 340;
 var prepointX = 500;
 var prepointY = 550;
 var turnCase = 0;
 var step_count = 0;
-var radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
 var preturn = 1;
 var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
 var range = [];
@@ -39,12 +38,12 @@ function setup() {
     createCanvas(2000, 1200);
 
 
-    var radius = distance(currentX, currentY, targetX, targetY);
-
+    var radius = distance_error(currentX, currentY, targetX, targetY);
+    var true_radius = distance(currentX, currentY, targetX, targetY);
 
     background(255);
     stroke(0);
-    drawCircle(currentX, currentY, radius);
+    drawCircle(currentX, currentY, true_radius);
     line(0, 500, width, 500);
     line(500, 0, 500, height);
 
@@ -101,10 +100,16 @@ function mousePressed() {
             var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
             var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
             var descision = turnDecision(currentX, currentY, prepointX, prepointY);
+    var move_distance = 20;
             if (preturn == 1) {
                 preturn = descision;
             }
-            flightMove(currentX, currentY, turnCase, descision);
+    
+            if(cur_radius<=20){
+                var move_distance = cur_radius;
+            }
+
+            flightMove(currentX, currentY, turnCase, descision, move_distance);
             cur_radius = distance(currentX, currentY, targetX, targetY);
             pre_radius = distance(prepointX, prepointY, targetX, targetY);
             addWeight(currentX, currentY, prepointX, prepointY, cur_radius, pre_radius);
@@ -216,7 +221,7 @@ function drawCircle(x, y, radius) {
     ellipse(x, y, radius * 2);
 }
 
-function distance(x1, y1, x2, y2) {
+function distance_error(x1, y1, x2, y2) {
     var d = Math.pow(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2), 0.5);
 
     if (d > 80) {
@@ -228,6 +233,11 @@ function distance(x1, y1, x2, y2) {
     }
 
 
+    return d;
+}
+
+function distance(x1, y1, x2, y2) {
+    var d = Math.pow(Math.pow((x1 - x2), 2) + Math.pow((y1 - y2), 2), 0.5);
     return d;
 }
 
@@ -264,6 +274,7 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
+                            map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2))*0.8;
                             map_count[weight_i][weight_j] += 1;
                             //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
                             //point(weight_i, weight_j);
@@ -300,6 +311,7 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
+                            map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2))*0.8;
                             map_count[weight_i][weight_j] += 1;
                             //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
                             //point(weight_i, weight_j);
@@ -711,7 +723,7 @@ function calConstant(x, y, m) { //計算直線常數
     return b;
 }
 
-function flightMove(currX, currY, turnCases, descision) {
+function flightMove(currX, currY, turnCases, descision, move_distance) {
 
 
     prepointX = currX;
@@ -721,97 +733,97 @@ function flightMove(currX, currY, turnCases, descision) {
         case 1:
             if (descision == 0) {
                 currentX += 0;
-                currentY += -20;
+                currentY += -move_distance;
             } else if (descision == 1) {
-                currentX += Math.floor(Math.pow(200, 0.5));
-                currentY += -Math.floor(Math.pow(200, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 2) {
-                currentX += 20;
+                currentX += move_distance;
                 currentY += 0;
             }
             break;
         case 2:
             if (descision == 0) {
-                currentX += -20;
+                currentX += -move_distance;
                 currentY += 0;
             } else if (descision == 1) {
-                currentX += -Math.floor(Math.pow(200, 0.5));
-                currentY += -Math.floor(Math.pow(200, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 2) {
                 currentX += 0;
-                currentY += -20;
+                currentY += -move_distance;
             }
             break;
         case 3:
             if (descision == 0) {
                 currentX += 0;
-                currentY += 20;
+                currentY += move_distance;
             } else if (descision == 1) {
-                currentX += -Math.floor(Math.pow(200, 0.5));
-                currentY += Math.floor(Math.pow(200, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 2) {
-                currentX += -20;
+                currentX += -move_distance;
                 currentY += 0;
             }
             break;
         case 4:
             if (descision == 0) {
-                currentX += 20;
+                currentX += move_distance;
                 currentY += 0;
             } else if (descision == 1) {
-                currentX += Math.floor(Math.pow(200, 0.5));
-                currentY += Math.floor(Math.pow(200, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 2) {
                 currentX += 0;
-                currentY += 20;
+                currentY += move_distance;
             }
             break;
         case 5:
             if (descision == 0) {
-                currentX += -Math.floor(Math.pow(200, 0.5));
-                currentY += -Math.floor(Math.pow(200, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 1) {
                 currentX += 0;
-                currentY += -20;
+                currentY += -move_distance;
             } else if (descision == 2) {
-                currentX += Math.floor(Math.pow(200, 0.5));
-                currentY += -Math.floor(Math.pow(200, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             }
             break;
         case 6:
             if (descision == 0) {
-                currentX += -Math.floor(Math.pow(200, 0.5));
-                currentY += Math.floor(Math.pow(200, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 1) {
-                currentX += -20;
+                currentX += -move_distance;
                 currentY += 0;
             } else if (descision == 2) {
-                currentX += -Math.floor(Math.pow(200, 0.5));
-                currentY += -Math.floor(Math.pow(200, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             }
             break;
         case 7:
             if (descision == 0) {
-                currentX += Math.floor(Math.pow(200, 0.5));
-                currentY += Math.floor(Math.pow(200, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 1) {
                 currentX += 0;
-                currentY += 20;
+                currentY += move_distance;
             } else if (descision == 2) {
-                currentX += -Math.floor(Math.pow(200, 0.5));
-                currentY += Math.floor(Math.pow(200, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             }
             break;
         case 8:
             if (descision == 0) {
-                currentX += Math.floor(Math.pow(200, 0.5));
-                currentY += -Math.floor(Math.pow(200, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             } else if (descision == 1) {
-                currentX += 20;
+                currentX += move_distance;
                 currentY += 0;
             } else if (descision == 2) {
-                currentX += Math.floor(Math.pow(200, 0.5));
-                currentY += Math.floor(Math.pow(200, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
             }
             break;
         default:
