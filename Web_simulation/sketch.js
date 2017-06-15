@@ -13,6 +13,7 @@ var range = [];
 var restartbool = 0;
 var restart_count = 1; //計算總共重新幾次
 
+
 var map_weight = []; //Create a Map with Weight
 var map_count = [];
 for (var i = 0; i < 2000; i++) {
@@ -26,6 +27,8 @@ for (var i = 0; i < 2000; i++) {
 
 var guess_error = [];
 var dist_error_cdf = [];
+var cosume_time = [];
+var total_distance = [];
 /*for (var i = 0; i < 100; i++) {
     dist_error_cdf[i] = 0;
 }*/
@@ -110,7 +113,16 @@ function mousePressed() {
                 var move_distance = 10;
                 if(cur_radius<=10){
                     move_distance = 5;
+                }else{
+                    cosume_time +=2;
                 }
+            }
+            
+            if(step_count==0){
+                total_distance.push(move_distance);
+            }
+            else{
+                total_distance[restart_count-1] += move_distance;
             }
 
             flightMove(currentX, currentY, turnCase, descision, move_distance);
@@ -161,7 +173,7 @@ function mousePressed() {
             var dist_error = Math.floor(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
             
             
-            if (restart_count == 1 || restart_count==31) {
+            if (restart_count == 1) {
                 guess_error.push(dist_error);
             } else {
                 guess_error[step_count - 1] += dist_error;
@@ -197,6 +209,7 @@ function mousePressed() {
                 }
                 console.log(total_guess_error);
                 console.log(dist_error_cdf);
+                console.log(total_distance);
                 break;
             }
             restart();
