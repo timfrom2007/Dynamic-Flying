@@ -6,7 +6,7 @@ var prepointX = 500;
 var prepointY = 550;
 var turnCase = 0;
 var step_count = 0;
-var re_calculate =0; //重新計算權重
+var re_calculate = 0; //重新計算權重
 var preturn = 1;
 var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
 var range = [];
@@ -35,7 +35,7 @@ var total_distance = [];
 
 
 
-var total_guess_error=[];
+var total_guess_error = [];
 
 
 function setup() {
@@ -96,33 +96,27 @@ function draw() {
 
 function mousePressed() {
 
-    while (true) {
+   // while (true) {
 
-        if (step_count != 100) {
+      //  if (step_count != 100) {
             step_count++;
             //console.log(step_count);
             var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
             var pre_radius = Math.floor(distance(prepointX, prepointY, targetX, targetY));
             var descision = turnDecision(currentX, currentY, prepointX, prepointY);
-    var move_distance = 20;
+            var move_distance = 20;
             if (preturn == 1) {
                 preturn = descision;
             }
-    
-            if(cur_radius<=20){
-                var move_distance = 10;
-                if(cur_radius<=10){
-                    move_distance = 5;
-                }else{
-                    cosume_time +=2;
-                }
+
+            if (cur_radius <= 20) {
+                move_distance = cur_radius;
             }
-            
-            if(step_count==0){
+
+            if (step_count == 0) {
                 total_distance.push(move_distance);
-            }
-            else{
-                total_distance[restart_count-1] += move_distance;
+            } else {
+                total_distance[restart_count - 1] += move_distance;
             }
 
             flightMove(currentX, currentY, turnCase, descision, move_distance);
@@ -157,7 +151,7 @@ function mousePressed() {
             large[2] = large[2] / large[3];
             //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
 
-            if (cur_radius<=20 && re_calculate==0) {
+            if (cur_radius <= 20 && re_calculate == 0) {
                 large = [0, 0, 0, 0];
                 for (var i = 0; i < 2000; i++) {
                     map_weight[i] = [];
@@ -171,8 +165,8 @@ function mousePressed() {
             }
 
             var dist_error = Math.floor(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
-            
-            
+
+
             if (restart_count == 1) {
                 guess_error.push(dist_error);
             } else {
@@ -181,15 +175,15 @@ function mousePressed() {
             //redraw();
 
             //console.log(targetX);
-            
-            if(step_count==98){
+
+            if (step_count == 98) {
                 dist_error_cdf.push(dist_error);
             }
-            
 
-        } else {
-            
-            
+
+        /*} else {
+
+
 
             for (var x = 0; x < 100; x++) {
                 if (restart_count == 1) {
@@ -200,12 +194,12 @@ function mousePressed() {
                     guess_error[x] = 0;
                 }
             }
-            
+
             if (restart_count == 1000) {
-                
+
                 for (var x = 0; x < 100; x++) {
                     //console.log("%s %s", Math.floor(total_guess_error[x] / restart_count), x + 1);
-                    total_guess_error[x] = total_guess_error[x]/restart_count;
+                    total_guess_error[x] = total_guess_error[x] / restart_count;
                 }
                 console.log(total_guess_error);
                 console.log(dist_error_cdf);
@@ -217,7 +211,7 @@ function mousePressed() {
         }
 
 
-    }
+    }*/
 
 
 }
@@ -281,8 +275,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                                 map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            //point(weight_i, weight_j);
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            point(weight_i, weight_j);
                         }
                     }
                 }
@@ -292,10 +286,10 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
-                            map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2))*0.8;
+                            map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2)) * 0.8;
                             map_count[weight_i][weight_j] += 1;
-                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            //point(weight_i, weight_j);
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            point(weight_i, weight_j);
                         }
                     }
                 }
@@ -318,8 +312,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                                 map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            //point(weight_i, weight_j);
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            point(weight_i, weight_j);
                         }
                     }
                 }
@@ -329,10 +323,10 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         var dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
-                            map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2))*0.8;
+                            map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2)) * 0.8;
                             map_count[weight_i][weight_j] += 1;
-                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            //point(weight_i, weight_j);
+                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            point(weight_i, weight_j);
                         }
                     }
                 }
@@ -753,8 +747,8 @@ function flightMove(currX, currY, turnCases, descision, move_distance) {
                 currentX += 0;
                 currentY += -move_distance;
             } else if (descision == 1) {
-                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 2) {
                 currentX += move_distance;
                 currentY += 0;
@@ -765,8 +759,8 @@ function flightMove(currX, currY, turnCases, descision, move_distance) {
                 currentX += -move_distance;
                 currentY += 0;
             } else if (descision == 1) {
-                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 2) {
                 currentX += 0;
                 currentY += -move_distance;
@@ -777,8 +771,8 @@ function flightMove(currX, currY, turnCases, descision, move_distance) {
                 currentX += 0;
                 currentY += move_distance;
             } else if (descision == 1) {
-                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 2) {
                 currentX += -move_distance;
                 currentY += 0;
@@ -789,8 +783,8 @@ function flightMove(currX, currY, turnCases, descision, move_distance) {
                 currentX += move_distance;
                 currentY += 0;
             } else if (descision == 1) {
-                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 2) {
                 currentX += 0;
                 currentY += move_distance;
@@ -798,50 +792,50 @@ function flightMove(currX, currY, turnCases, descision, move_distance) {
             break;
         case 5:
             if (descision == 0) {
-                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 1) {
                 currentX += 0;
                 currentY += -move_distance;
             } else if (descision == 2) {
-                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             }
             break;
         case 6:
             if (descision == 0) {
-                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 1) {
                 currentX += -move_distance;
                 currentY += 0;
             } else if (descision == 2) {
-                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             }
             break;
         case 7:
             if (descision == 0) {
-                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 1) {
                 currentX += 0;
                 currentY += move_distance;
             } else if (descision == 2) {
-                currentX += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             }
             break;
         case 8:
             if (descision == 0) {
-                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += -Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += -Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             } else if (descision == 1) {
                 currentX += move_distance;
                 currentY += 0;
             } else if (descision == 2) {
-                currentX += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
-                currentY += Math.floor(Math.pow((Math.pow(move_distance,2))/2, 0.5));
+                currentX += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
+                currentY += Math.floor(Math.pow((Math.pow(move_distance, 2)) / 2, 0.5));
             }
             break;
         default:
@@ -858,10 +852,10 @@ function restart() {
     prepointY = 550;
     turnCase = 0;
     step_count = 0;
-    
+
     preturn = 1;
     bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
-    
+
 
 
     for (var i = 0; i < 2000; i++) {
@@ -883,21 +877,20 @@ function restart() {
     targetX = 500 + x_rand;
     targetY = 500 - y_rand;
     */
-    
-    if(targetY==400){
-        if(targetX==354){
+
+    if (targetY == 400) {
+        if (targetX == 354) {
             targetX = 645;
         }
-        targetX+=1;
+        targetX += 1;
         targetY = 500;
-        
-    }
-    else{
+
+    } else {
         targetY -= 1;
     }
-    
-    
-    
+
+
+
     radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
 
     //console.log("Tar: %s, %s", targetX, targetY);
