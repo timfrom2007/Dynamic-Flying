@@ -21,9 +21,10 @@ var range = [];
 var restartbool = 0;
 var restart_count = 1; //計算總共重新幾次
 
-var timer;  //單位second
-var speed=5; // 單位m/s
 
+var speed; // 單位m/s
+var tmp_timer=0;
+var timer=[];  //單位second
 
 var map_weight = []; //Create a Map with Weight
 var map_count = [];
@@ -35,6 +36,7 @@ for (var i = 0; i < 2000; i++) {
         map_count[i][j] = 0;
     }
 }
+
 
 var guess_error = [];
 var dist_error_cdf = [];
@@ -101,9 +103,9 @@ function draw() {
 
 function mousePressed() {
 
-   // while (true) {
+    while (true) {
 
-      //  if (step_count != 100) {
+        if (step_count != 100) {
             step_count++;
             //console.log(step_count);
             var cur_radius = Math.floor(distance(currentX, currentY, targetX, targetY));
@@ -125,6 +127,7 @@ function mousePressed() {
             }
 
             flightMove(currentX, currentY, turnCase, descision, move_distance);
+            
             cur_radius = distance(currentX, currentY, targetX, targetY);
             pre_radius = distance(prepointX, prepointY, targetX, targetY);
             addWeight(currentX, currentY, prepointX, prepointY, cur_radius, pre_radius);
@@ -156,7 +159,7 @@ function mousePressed() {
             large[2] = large[2] / large[3];
             //console.log("Large: %s, i: %s, j: %s, count: %s", large[0], large[1], large[2], large[3]);
 
-            if (cur_radius <= 20 && re_calculate == 0) {
+            if (cur_radius <= 20 && re_calculate == 0) {   //距離目標20m時，地圖權重歸零重新分配
                 large = [0, 0, 0, 0];
                 for (var i = 0; i < 2000; i++) {
                     map_weight[i] = [];
@@ -170,14 +173,14 @@ function mousePressed() {
             }
 
             var dist_error = Math.floor(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
-
+            var speed = moveDistance_to_speed(move_distance);
+            accumulate_timer(move_distance,step_count,dist_error);
 
             if (restart_count == 1) {
                 guess_error.push(dist_error);
             } else {
                 guess_error[step_count - 1] += dist_error;
             }
-            //redraw();
 
             //console.log(targetX);
 
@@ -186,7 +189,7 @@ function mousePressed() {
             }
 
 
-        /*} else {
+        } else {
 
 
 
@@ -200,7 +203,7 @@ function mousePressed() {
                 }
             }
 
-            if (restart_count == 1000) {
+            if (restart_count == 5) {
 
                 for (var x = 0; x < 100; x++) {
                     //console.log("%s %s", Math.floor(total_guess_error[x] / restart_count), x + 1);
@@ -209,6 +212,7 @@ function mousePressed() {
                 console.log(total_guess_error);
                 console.log(dist_error_cdf);
                 console.log(total_distance);
+                console.log(timer);
                 break;
             }
             restart();
@@ -216,7 +220,7 @@ function mousePressed() {
         }
 
 
-    }*/
+    }
 
 
 }
@@ -280,8 +284,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                                 map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i, weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -293,8 +297,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                         if (cur_radius >= dist) {
                             map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2)) * 0.8;
                             map_count[weight_i][weight_j] += 1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i, weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -317,8 +321,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                                 map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / Math.pow((cur_radius), 2);
                                 map_count[weight_i][weight_j] += 1;
                             }
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i, weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -330,8 +334,8 @@ function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
                         if (cur_radius >= dist) {
                             map_weight[weight_i][weight_j] += (dist / Math.pow((cur_radius), 2)) * 0.8;
                             map_count[weight_i][weight_j] += 1;
-                            stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
-                            point(weight_i, weight_j);
+                            //stroke(102, 211, 131, Math.floor(map_weight[weight_i][weight_j] * 2000 / map_count[weight_i][weight_j])); //RGB&Opacity
+                            //point(weight_i, weight_j);
                         }
                     }
                 }
@@ -740,12 +744,13 @@ function calConstant(x, y, m) { //計算直線常數
     return b;
 }
 
-function flightMove(currX, currY, turnCases, descision, speed) {
+function flightMove(currX, currY, turnCases, descision, move_distance) {
 
 
     prepointX = currX;
     prepointY = currY;
-    move_distance = speed*4;
+    
+    
     
     //console.log("Descision: %s", descision)
     switch (Math.abs(turnCases)) {
@@ -851,6 +856,38 @@ function flightMove(currX, currY, turnCases, descision, speed) {
 
 }
 
+function moveDistance_to_speed(move_distance){
+    
+    if(move_distance>=5){
+        speed = 5;
+    }
+    else{
+        speed = move_distance;
+    }
+    
+    return speed;
+}
+
+function accumulate_timer(move_distance,step,dist_error,step){  //主要以誤差低於2時停止計時，或是step=99仍無法精準定位出時停止計時
+    
+    if(move_distance>5){
+        tmp_timer += move_distance/speed;
+    }
+    else{
+        tmp_timer += 1;
+    }
+    
+    if (speed < 5) {
+        if (step == 99 || dist_error <= 5) {
+            timer.push(tmp_timer);
+            tmp_timer = 0;
+        }
+    }
+    
+    
+    
+}
+
 function restart() {
     restart_count++;
     currentX = 500;
@@ -897,7 +934,6 @@ function restart() {
     }
 
 
-
     radius = Math.floor(Math.pow(Math.pow((currentX - targetX), 2) + Math.pow((currentY - targetY), 2), 0.5));
 
     //console.log("Tar: %s, %s", targetX, targetY);
@@ -924,7 +960,8 @@ function createArray(length) {
     return arr;
 }
 
-//以下為標準差部分
+
+//以下為標準差部分，用以添加高斯常態分佈變數
 var spareRandom = null;
 
 function normalRandom() {
