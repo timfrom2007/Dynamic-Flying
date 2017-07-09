@@ -1,5 +1,6 @@
-var currentX = 500;
-var currentY = 500;
+// 參數初始化
+var currentX = 500; //飛機目前X位置
+var currentY = 500; //飛機目前Y位置
 var targetX = 350;
 var targetY = 500;
 var prepointX = 500;
