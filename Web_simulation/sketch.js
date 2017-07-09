@@ -1,18 +1,28 @@
 // 參數初始化
-var currentX = 500; //飛機目前X位置
-var currentY = 500; //飛機目前Y位置
+
+//飛機位置
+var currentX = 500;
+var currentY = 500;
+
+//目標位置
 var targetX = 350;
 var targetY = 500;
+
+//飛機上個位置
 var prepointX = 500;
 var prepointY = 550;
+
 var turnCase = 0;
-var step_count = 0;
+var step_count = 0; //該次飛行的第幾步
 var re_calculate = 0; //重新計算權重
 var preturn = 1;
 var bool_predecision = 0; //上次走的方向是正確或錯誤，0表正確
 var range = [];
 var restartbool = 0;
 var restart_count = 1; //計算總共重新幾次
+
+var timer;  //單位second
+var speed=5; // 單位m/s
 
 
 var map_weight = []; //Create a Map with Weight
@@ -30,12 +40,6 @@ var guess_error = [];
 var dist_error_cdf = [];
 var cosume_time = [];
 var total_distance = [];
-/*for (var i = 0; i < 100; i++) {
-    dist_error_cdf[i] = 0;
-}*/
-
-
-
 var total_guess_error = [];
 
 
@@ -736,11 +740,13 @@ function calConstant(x, y, m) { //計算直線常數
     return b;
 }
 
-function flightMove(currX, currY, turnCases, descision, move_distance) {
+function flightMove(currX, currY, turnCases, descision, speed) {
 
 
     prepointX = currX;
     prepointY = currY;
+    move_distance = speed*4;
+    
     //console.log("Descision: %s", descision)
     switch (Math.abs(turnCases)) {
         case 1:
