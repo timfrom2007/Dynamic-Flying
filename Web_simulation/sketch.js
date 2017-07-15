@@ -21,7 +21,6 @@ var range = [];
 var restartbool = 0;
 var restart_count = 1; //計算總共重新幾次
 
-
 var speed; // 單位m/s
 var tmp_timer=0;
 var timer=[];  //單位second
@@ -265,7 +264,7 @@ function distance(x1, y1, x2, y2) {
 
 function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
 
-    var r_matrix = retation_matrix(currX, currY, preX, preY); //旋轉矩陣
+    var r_matrix = rotation_matrix(currX, currY, preX, preY); //旋轉矩陣
 
 
     if (cur_radius - pre_radius > 0) { //半徑變大，表示遠離
@@ -364,14 +363,14 @@ function drawMap() {
 
 function turnDecision(currX, currY, preX, preY) {
 
-    var r_matrix = retation_matrix(currX, currY, preX, preY); //旋轉矩陣
+    var r_matrix = rotation_matrix(currX, currY, preX, preY); //旋轉矩陣
     var turn_matrix = [0, 0, 0];
 
     var cur_radius = Math.floor(distance(currX, currY, targetX, targetY));
     var pre_radius = Math.floor(distance(preX, preY, targetX, targetY));
 
     if (currX - preX == 0) {
-        var slope = 0; //行進路線斜率
+        var slope =ㄙㄧ 0; //行進路線斜率
         var split_line1 = (slope - Math.tan(Math.PI / 3)) / (Math.tan(Math.PI / 3) * slope + 1);
         var split_line2 = (slope + Math.tan(Math.PI / 3)) / (1 - Math.tan(Math.PI / 3) * slope);
     } else {
@@ -703,7 +702,7 @@ function turnDecision(currX, currY, preX, preY) {
 
 }
 
-function retation_matrix(currX, currY, preX, preY) {
+function rotation_matrix(currX, currY, preX, preY) {
     var degree = Math.PI / 4; //  π/4 = 45°
     var deltaX = currX - preX;
     var deltaY = currY - preY;
