@@ -262,7 +262,7 @@ function distance(x1, y1, x2, y2) {
 }
 
 
-function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
+function addWeight(currX, currY, dpreX, preY, cur_radius, pre_radius) {
 
     var r_matrix = rotation_matrix(currX, currY, preX, preY); //旋轉矩陣
 
@@ -881,10 +881,7 @@ function accumulate_timer(move_distance,step,dist_error,step){  //主要以誤�
             timer.push(tmp_timer);
             tmp_timer = 0;
         }
-    }
-    
-    
-    
+    }   
 }
 
 function restart() {
