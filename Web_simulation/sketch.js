@@ -262,7 +262,7 @@ function distance(x1, y1, x2, y2) {
 }
 
 
-function addWeight(currX, currY, dpreX, preY, cur_radius, pre_radius) {
+function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
 
     var r_matrix = rotation_matrix(currX, currY, preX, preY); //旋轉矩陣
 
