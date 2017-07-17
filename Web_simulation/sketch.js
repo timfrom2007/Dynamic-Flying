@@ -21,6 +21,7 @@ var range = [];
 var restartbool = 0;
 var restart_count = 1; //計算總共重新幾次
 
+
 var speed; // 單位m/s
 var tmp_timer=0;
 var timer=[];  //單位second
@@ -370,7 +371,7 @@ function turnDecision(currX, currY, preX, preY) {
     var pre_radius = Math.floor(distance(preX, preY, targetX, targetY));
 
     if (currX - preX == 0) {
-        var slope =ㄙㄧ 0; //行進路線斜率
+        var slope = 0; //行進路線斜率
         var split_line1 = (slope - Math.tan(Math.PI / 3)) / (Math.tan(Math.PI / 3) * slope + 1);
         var split_line2 = (slope + Math.tan(Math.PI / 3)) / (1 - Math.tan(Math.PI / 3) * slope);
     } else {
@@ -881,7 +882,10 @@ function accumulate_timer(move_distance,step,dist_error,step){  //主要以誤�
             timer.push(tmp_timer);
             tmp_timer = 0;
         }
-    }   
+    }
+    
+    
+    
 }
 
 function restart() {
