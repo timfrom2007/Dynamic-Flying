@@ -12,7 +12,6 @@
 #include "DJI_Type.h"
 
 #include "search.h"
-#include "rssi.h"
 
 using namespace std;
 using namespace DJI::onboardSDK;
@@ -60,9 +59,9 @@ int main(int argc, char *argv[])
 
     FILE *log = fopen("./log.txt","w");
     for(int i=0;i<record.size();i++){
-	printf("%lf %lf %lf %lf\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI);
+	printf("%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].ctimeStamp);
 	//cout<<record[i].timeStamp<<endl;
-	fprintf(log,"%lf %lf %lf %lf\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI);
+	fprintf(log,"%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].ctimeStamp);
     }
     fclose(log);
     PointData p = calculatePos(&record);

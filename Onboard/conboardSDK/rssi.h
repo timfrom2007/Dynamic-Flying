@@ -1,9 +1,10 @@
+/*
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <fstream>
-
+#include <iwlib.h>
+#include <algorithm>
 using namespace std;
 
 struct RSSIDetectParam{
@@ -12,4 +13,7 @@ struct RSSIDetectParam{
 };
 
 
-void *RSSIDetectThr(void *ptr);
+float RSSIDetectThr();
+
+float median_filter(int* rssi);
+ */

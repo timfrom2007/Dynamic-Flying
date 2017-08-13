@@ -3,12 +3,18 @@
 #include <pthread.h>
 #include <time.h>
 #include <cmath>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fstream>
+#include <iwlib.h>
+#include <algorithm>
 
 #include "DJI_API.h"
 #include "DJI_Type.h"
 #include "DJIHardDriverManifold.h"
 #include "conboardsdktask.h"
 #include "APIThread.h"
+#include "DJI_WayPoint.h"
 
 using namespace std;
 using namespace DJI::onboardSDK;
@@ -30,6 +36,7 @@ struct CollectThreadParams
     bool isFlying = true;
 };
 
+double median_filter(int* rssi);
 double latitude(const Flight* flight);
 double longitude(const Flight* flight);
 double altitude(const Flight* flight);
@@ -46,3 +53,12 @@ double distance(double lat1, double lon1, double lat2, double lon2, char unit);
 double rssiToDist(double rssi, double altitude);
 vector<PointData> planPath(CoreAPI *api); //Planning Path
 double normalDistribution();
+vector<double> rotation_matrix(int currX, int currY, int preX, int preY);
+double moveDistance_to_speed(double move_distance);
+void flightMove(int currX, int currY, int turnCases, int descision, double move_distance);
+double distance(int x1, int y1, int x2, int y2);
+void addWeight(int currX, int currY, int preX, int preY, double cur_radius, double pre_radius);
+double calConstant(double x, double y, double m);
+int turnDecision(int currX, int currY, int preX, int preY);
+void nextWayPoint(WayPoint waypoint, double lat, double lon);
+void initWayPoint(WayPoint waypoint);

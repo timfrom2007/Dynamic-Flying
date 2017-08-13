@@ -12,13 +12,13 @@ double altitude(const Flight *flight)
 {
     return flight->getPosition().altitude;
 }
-void control(VirtualRC *vrc ,int pitch,int roll)
+void control(VirtualRC *vrc ,int pitch,int yaw)
 {
     VirtualRCData vdata;
-    vdata.yaw = 1024;
+    vdata.yaw = 1024+yaw;
     vdata.throttle = 1024;
-    vdata.pitch = 1024 + pitch;
-    vdata.roll = 1024 + roll;
+    vdata.pitch = 1024+ pitch;
+    vdata.roll = 1024; //+ roll;
     vrc->sendData(vdata);
 }
 void takeOff(VirtualRC *vrc)
@@ -35,6 +35,7 @@ void takeOff(VirtualRC *vrc)
     vrc->sendData(vdata2);
     sleep(5);
 }
+
 void *collectRSSI(void *ptr)
 {
     CollectThreadParams *params = (CollectThreadParams*)ptr;
@@ -43,52 +44,217 @@ void *collectRSSI(void *ptr)
     clock_t start=clock(), finish;
 
     while(params->isFlying){
-	usleep(500*1000);
-        finish = clock();
+	usleep(100*1000);
+        //finish = clock();
 	PointData p;
 	p.latitude = latitude(params->flight);
 	p.longitude = longitude(params->flight);
 	p.altitude = altitude(params->flight);
-	p.RSSI = getFakeRSSI(params->flight,0.393454,1.988964,0);
-	p.ctimeStamp = (double)(finish - start)/ CLOCKS_PER_SEC;
+	
+	
+	struct filtering_result{
+            float median;
+    	} filter;
+
+	iwrange range;
+	int sock;
+	wireless_info info;
+	sock = iw_sockets_open();
+	int collect[50];
+
+	if(iw_get_range_info(sock,"wlan0",&range)<0){
+            printf("Error\n");
+            exit(2);
+	}
+
+   	int i=0;
+    	int count=0;
+  	while(i<10000){
+    	    iw_get_stats(sock,"wlan0",&(info.stats),&range, 1);
+    	    int r = (int8_t)info.stats.qual.level;
+    	    if(i%200==0){
+        	collect[count] = (int8_t)info.stats.qual.level;
+        	//printf("%d\n",(int8_t)info.stats.qual.level);
+        	count++;
+    	    }
+    	    //usleep(100);
+            i++;
+	}
+	sort(collect, collect+50);
+  	filter.median = median_filter(collect);
+
+	p.RSSI = filter.median;
+	finish = clock();
+	//p.RSSI = getFakeRSSI(params->flight,0.393454,1.988964,0);
+	p.ctimeStamp = (finish - start)/ CLOCKS_PER_SEC;
 	record->push_back(p);
     }
 
     return 0;
 }
+
+vector<PointData> planPath(CoreAPI *api){
+    
+    vector<PointData> record;
+
+    record = goFind(api,"./prePath.txt");  
+ 
+/*
+    int quarter=record.size()/4;
+    
+    
+    for(int i=0;i<record.size();i++){
+	if(i<quarter){
+            if(record[i+1].RSSI-record[i].RSSI<=0){
+	        vote_1--;
+	    }
+	    else{
+	        vote_1++;
+	    }
+	    cout<<"vote1: "<<vote_1<<" "<<endl;
+	}
+	if(quarter<=i&&i<quarter*2){
+	    if(record[i+1].RSSI-record[i].RSSI<=0){
+		vote_2--;
+	    }	
+	    else{
+	        vote_2++;
+	    }
+	    cout<<"vote2: "<<vote_2<<" "<<endl;
+	}
+	if(quarter*2<=i&&i<quarter*3){
+            if(record[i+1].RSSI-record[i].RSSI<=0){
+                vote_3--;
+            }
+            else{
+                vote_3++;
+            }
+	    cout<<"vote3: "<<vote_3<<" "<<endl;
+        }
+	if(quarter*3<=i&&i<record.size()){
+	    
+            if(record[i+1].RSSI-record[i].RSSI<=0){
+                vote_4--;
+            }
+            else{
+                vote_4++;
+            }
+            cout<<"vote4: "<<vote_4<<" "<<endl;
+        }
+    }
+    cout<<vote_1<<" "<<vote_2<<" "<<vote_3<<" "<<vote_4<<endl;
+    if(vote_1<=0){
+	if(vote_4>=0){
+	    record2 = goFind(api,"./pathZone1.txt");
+            record.insert( record.end(), record2.begin(), record2.end() );
+		cout << 1 << endl;
+	}
+	else{
+	    record2 = goFind(api,"./pathZone1.txt");
+            record3 = goFind(api,"./pathZone3.txt");
+            record.insert( record.end(), record2.begin(), record2.end() );
+            record.insert( record.end(), record3.begin(), record3.end() );
+cout << 2 << endl;
+
+	}
+    }
+    else{
+        if(vote_2>=0){
+	    if(vote_3<=0){
+		record2 = goFind(api,"./pathZone2.txt");
+		record.insert( record.end(), record2.begin(), record2.end() );
+	    cout << 3 << endl;
+	    }
+	    else{
+		if(vote_4<=0){
+		    record2 = goFind(api,"./pathZone2.txt");
+		    record.insert( record.end(), record2.begin(), record2.end() );
+		cout << 4 << endl;
+		}
+		else{
+		    record2 = goFind(api,"./pathZone1.txt");
+		    record.insert( record.end(), record2.begin(), record2.end() );
+		cout << 5 << endl;
+		}
+	    }
+        }
+	else{
+	    if(vote_4>=0){
+                record2 = goFind(api,"./pathZone1.txt");
+                record.insert( record.end(), record2.begin(), record2.end() );
+            cout << 6 << endl;
+	    }
+            else{
+                record2 = goFind(api,"./pathZone1.txt");
+                record3 = goFind(api,"./pathZone3.txt");
+                record.insert( record.end(), record2.begin(), record2.end() );
+            cout << 7 << endl;
+	    }
+	}
+    }
+*/
+    return record;
+}
+
+
+double median_filter(int* rssi)
+{
+    double result;
+    int mid = sizeof(rssi)/2;
+    if(sizeof(rssi)%2==0){
+        result = (rssi[mid]+rssi[mid+1])/2;
+    }
+    else{
+        result = rssi[mid+1];
+    }
+    return result;
+}
+
 vector<PointData> goFind(CoreAPI *api,const char *pathFile)
 {
     VirtualRC vrc(api);
     vrc.setControl(true,VirtualRC::CutOff::CutOff_ToRealRC);
     FILE * fp = fopen(pathFile,"r");
-    int pitch = 0,roll = 0;
+    int pitch = 0,roll = 0,yaw=0;
     vector<PointData> record;
     pthread_t collectThr;
     CollectThreadParams params;
     params.record = &record;
     params.flight = new Flight(api);
-    
+   
     /* ---- start flight ---- */
-
     pthread_create(&collectThr,NULL,collectRSSI,&params);
-    fscanf(fp,"%d %d",&pitch,&roll);
-    do{
-	cout << "p:" << pitch << "  r:" << roll <<endl;
-	control(&vrc,pitch,roll);
-	usleep(200 * 1000);
-	fscanf(fp,"%d %d",&pitch,&roll);
-    }while(!feof(fp));
-    params.isFlying = false;
-    pthread_join(collectThr,NULL);
-    cout<< "Record point: " << record.size() <<endl;
-    return record;
+    fscanf(fp,"%d %d",&pitch,&yaw);
+    if(record.RSSI<0)
+    {
+        ddd;
+        
+        return record;       
+    }
+    else
+    {
+        do{
+        
+        	cout << "pitch:" << pitch << "  yaw:" << yaw <<endl;
+        	control(&vrc,pitch,yaw);
+        	usleep(200 * 1000);
+        	fscanf(fp,"%d %d",&pitch,&yaw);
+        }while(!feof(fp));
+    
+        params.isFlying = false;
+        pthread_join(collectThr,NULL);
+        cout<< "Record point: " << record.size() <<endl;
+        return record;
+    }
+    
 }
+
 double getFakeRSSI(const Flight *flight,double la,double lo,double al)
 {
     double lat = latitude(flight);
     double lon = longitude(flight);
     double alt = altitude(flight);
-    double dist = 1000 * distance(la,lo,lat,lon,'K'); //meters
+    double dist = 1000 * earth_distance(la,lo,lat,lon,'K'); //meters
     dist = sqrt((dist*dist)+(alt-al)*(alt-al));
     double n=2, A= -10; //n:path-loss exponent, A:RSSI per unit 
     double rssi = A - 10*n*log10(dist); // + 1.4 * normalDistribution();
@@ -102,7 +268,7 @@ double deg2rad(double deg) {
 double rad2deg(double rad) {
   return (rad * 180 / _PI_);
 }
-double distance(double lat1, double lon1, double lat2, double lon2, char unit) {
+double earth_distance(double lat1, double lon1, double lat2, double lon2, char unit) {
   double theta, dist;
   theta = lon1 - lon2;
   dist = sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(theta);
@@ -207,111 +373,7 @@ double rssiToDist(double rssi, double altitude)
     dist = sqrt(pow(dist,n) + pow(altitude, n));
     return dist;
 }
-vector<PointData> planPath(CoreAPI *api){
-    
-    vector<PointData> record;
-    vector<PointData> record2;
-    vector<PointData> record3;
-    
-    int vote_1=0, vote_2=0, vote_3=0, vote_4=0, count=0;
-    record = goFind(api,"./testPath.txt");
-    
-/*
-    int quarter=record.size()/4;
-    
-    
-    for(int i=0;i<record.size();i++){
-	if(i<quarter){
-            if(record[i+1].RSSI-record[i].RSSI<=0){
-	        vote_1--;
-	    }
-	    else{
-	        vote_1++;
-	    }
-	    cout<<"vote1: "<<vote_1<<" "<<endl;
-	}
-	if(quarter<=i&&i<quarter*2){
-	    if(record[i+1].RSSI-record[i].RSSI<=0){
-		vote_2--;
-	    }	
-	    else{
-	        vote_2++;
-	    }
-	    cout<<"vote2: "<<vote_2<<" "<<endl;
-	}
-	if(quarter*2<=i&&i<quarter*3){
-            if(record[i+1].RSSI-record[i].RSSI<=0){
-                vote_3--;
-            }
-            else{
-                vote_3++;
-            }
-	    cout<<"vote3: "<<vote_3<<" "<<endl;
-        }
-	if(quarter*3<=i&&i<record.size()){
-	    
-            if(record[i+1].RSSI-record[i].RSSI<=0){
-                vote_4--;
-            }
-            else{
-                vote_4++;
-            }
-            cout<<"vote4: "<<vote_4<<" "<<endl;
-        }
-    }
-    cout<<vote_1<<" "<<vote_2<<" "<<vote_3<<" "<<vote_4<<endl;
-    if(vote_1<=0){
-	if(vote_4>=0){
-	    record2 = goFind(api,"./pathZone1.txt");
-            record.insert( record.end(), record2.begin(), record2.end() );
-		cout << 1 << endl;
-	}
-	else{
-	    record2 = goFind(api,"./pathZone1.txt");
-            record3 = goFind(api,"./pathZone3.txt");
-            record.insert( record.end(), record2.begin(), record2.end() );
-            record.insert( record.end(), record3.begin(), record3.end() );
-cout << 2 << endl;
 
-	}
-    }
-    else{
-        if(vote_2>=0){
-	    if(vote_3<=0){
-		record2 = goFind(api,"./pathZone2.txt");
-		record.insert( record.end(), record2.begin(), record2.end() );
-	    cout << 3 << endl;
-	    }
-	    else{
-		if(vote_4<=0){
-		    record2 = goFind(api,"./pathZone2.txt");
-		    record.insert( record.end(), record2.begin(), record2.end() );
-		cout << 4 << endl;
-		}
-		else{
-		    record2 = goFind(api,"./pathZone1.txt");
-		    record.insert( record.end(), record2.begin(), record2.end() );
-		cout << 5 << endl;
-		}
-	    }
-        }
-	else{
-	    if(vote_4>=0){
-                record2 = goFind(api,"./pathZone1.txt");
-                record.insert( record.end(), record2.begin(), record2.end() );
-            cout << 6 << endl;
-	    }
-            else{
-                record2 = goFind(api,"./pathZone1.txt");
-                record3 = goFind(api,"./pathZone3.txt");
-                record.insert( record.end(), record2.begin(), record2.end() );
-            cout << 7 << endl;
-	    }
-	}
-    }
-*/
-    return record;
-}
 double normalDistribution()
 {
     srand(time(NULL));
@@ -386,7 +448,7 @@ vector<double> rotation_matrix(int currX, int currY, int preX, int preY){
     r_matrix.push_back(-sin(degree));
     r_matrix.push_back(cos(degree));
 
-
+    return r_matrix;
 }
 
 double moveDistance_to_speed(double move_distance){
@@ -939,4 +1001,5 @@ int turnDecision(int currX, int currY, int preX, int preY) {
     }
 
 }
+
 
