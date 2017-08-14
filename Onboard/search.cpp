@@ -50,8 +50,8 @@ void *collectRSSI(void *ptr)
 	p.latitude = latitude(params->flight);
 	p.longitude = longitude(params->flight);
 	p.altitude = altitude(params->flight);
-
-
+	
+	
 	struct filtering_result{
     	float median;
     } filter;
@@ -83,10 +83,10 @@ void *collectRSSI(void *ptr)
 	}
 		sort(collect, collect+50);
 	  	filter.median = median_filter(collect);
-
+	
 		p.RSSI = filter.median;
 		finish = clock();
-
+		
 		p.ctimeStamp = (finish - start)/ CLOCKS_PER_SEC;
 		record->push_back(p);
     }
@@ -105,27 +105,17 @@ void *collectRSSI(void *ptr)
 }
 
 vector<PointData> planPath(CoreAPI *api){
-
-    // extern variable
-    int turnCase = 0;
-    int preturn = 1;
-    int bool_predecision = 0;
-
-    double map_weight[600][1000];
-    int map_count[600][1000];
-
-    // extern variable
-
-    double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX, preY;  //Current X and Y, XY coordinate
-    int descision[3];
+    
+    int search = 0;
+    int descision[3]; 
     vector<PointData> preRecord;
     record = goFind(api,"./prePath.txt");
     vector<PointData> searchRecord;
     searchRecord = goFind(api,"./moveStraight.txt");
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-	addWeight(currX, currY, preX, preY, cur_radius, pre_radius);
-
+    
+	addWeight(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].RSSI, record[record.size()-1].RSSI, record[record.size()-1].RSSI, cur_radius, pre_radius);
 	if(descision==0){
 		searchRecord = goFind(api,"./moveLeft.txt");
 	}
@@ -136,12 +126,12 @@ vector<PointData> planPath(CoreAPI *api){
 		searchRecord = goFind(api,"./moveRight.txt");
 	}
 
-    cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
-    pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-
-
+    double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
+    double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+    
+    
     record.insert( preRecord.end(), searchRecord.begin(), searchRecord.end() );
-
+ 
 /*
 	    if(vote_4>=0){
                 record2 = goFind(api,"./pathZone1.txt");
@@ -169,11 +159,11 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile)
     CollectThreadParams params;
     params.record = &record;
     params.flight = new Flight(api);
-
+   
     /* ---- start flight ---- */
     pthread_create(&collectThr,NULL,collectRSSI,&params);
     fscanf(fp,"%d %d",&pitch,&yaw);
-
+    
     do{
 		if(record[record.size()-1].startSearch != record[record.size()-2].startSearch){
 			return record;
@@ -197,15 +187,13 @@ double getFakeRSSI(const Flight *flight,double la,double lo,double al, int start
     double alt = altitude(flight);
     double dist = 1000 * earth_distance(la,lo,lat,lon,'K'); //meters
     dist = sqrt((dist*dist)+(alt-al)*(alt-al));
-    double n=2, A= -10; //n:path-loss exponent, A:RSSI per unit
+    double n=2, A= -10; //n:path-loss exponent, A:RSSI per unit 
     double rssi = A - 10*n*log10(dist); // + 1.4 * normalDistribution();
     if(dist>300 && startSearch==0){
 		rssi = 1;
 	}
     return rssi;
 }
-
-
 
 #define _PI_ 3.14159265358979323846
 double deg2rad(double deg) {
@@ -224,32 +212,6 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
   dist = dist * 60 * 1.1515;
   dist = dist * 1.609344;
   return (dist);
-}
-
-double coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, vector<PointData> *preRecord, vector<PointData> *curRecord){  //XY coordinate to Lon,Lat coordinate
-	/* we solve the linear system
-     * ax+by=e  lonA*lon + latA*lat = xt*xa + yt*ya
-     * cx+dy=f  lonB*lon + latB*lat = xt*xb + yt*yb
-     */
-    double a = *preRecord[*preRecord.size()-1].longitude;
-	double b = *preRecord[*preRecord.size()-1].latitude;
-	double c = *curRecord[*curRecord.size()-1].longitude;
-	double d = *curRecord[*curRecord.size()-1].latitude;
-	double e = xt*xa + yt*ya;
-	double f = xt*xb + yt*yb;
-
-	double result[2];
-
-	double determinant = a*d - b*c;
-    if(determinant != 0) {
-        double result[0] = (e*d - b*f)/determinant;
-        double result[1] = (a*f - e*c)/determinant;
-    } else {
-        printf("Cramer equations system: determinant is zero\n"
-                "there are either no solutions or many solutions exist.\n");
-    }
-
-	return result;
 }
 
 PointData calculatePos(vector<PointData> *record) //Pure RSSI
@@ -316,7 +278,7 @@ PointData calculatePos3(vector<PointData> *record) //Trilateration
     pData.latitude = x;
     pData.longitude = y;
     return pData;
-
+    
 }
 PointData calculatePos4(vector<PointData> *record) //Modified Differential RSSI
 {
@@ -364,11 +326,30 @@ Dynamic Path Planning Function
 
 */
 
+// extern variable
 
+int currentX;
+int currentY;
+
+int targetX;
+int targetY;
+
+int prepointX;
+int prepointY;
+
+int turnCase;
+int step_count;
+int preturn;
+int bool_predecision;
+
+double map_weight[700][1000];
+int map_count[700][1000];
+
+// extern variable
 
 vector<double> rotation_matrix(int currX, int currY, int preX, int preY){
 
-    double degree = _PI_ / 4; // π/4 = 45°
+    double degree = _PI_ / 4; // π/4 = 45° 
     int deltaX = currX - preX;
     int deltaY = currY - preY;
 
@@ -501,7 +482,7 @@ void addWeight(int currX, int currY, int preX, int preY, double cur_radius, doub
 }
 
 double calConstant(double x, double y, double m) { //計算直線常數
-    //假設直線方程式為 y = mx+b
+    //假設直線方程式為 y = mx+b 
     double b = y - (m * x);
     return b;
 }
@@ -513,7 +494,7 @@ int turnDecision(int currX, int currY, int preX, int preY) {
 
     double cur_radius = floor(distance(currX, currY, targetX, targetY));
     double pre_radius = floor(distance(preX, preY, targetX, targetY));
-
+    
     double slope;
     double split_line1;
     double split_line2;
@@ -545,7 +526,7 @@ int turnDecision(int currX, int currY, int preX, int preY) {
         turnCase = 2;
     } else if (currX - preX < 0 && currY - preY > 0) { //行進方向為↙
         turnCase = 3;
-    } else if (currX - preX > 0 && currY - preY > 0) { //行進方向為↘
+    } else if (currX - preX > 0 && currY - preY > 0) { //行進方向為↘       
         turnCase = 4;
     } else if (currX - preX == 0 && currY - preY < 0) { //行進方向為↑
         turnCase = 5;

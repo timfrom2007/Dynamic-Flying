@@ -250,7 +250,7 @@ function distance_error(x1, y1, x2, y2) {
     } else if (80 >= d && d > 40) {
         d = normalRandomScaled(d, 5.3);
     } else {
-        d = d;
+    d = d;
     }
 
 

@@ -27,6 +27,7 @@ struct PointData
     double RSSI = 0;
     time_t timeStamp = 0;
     clock_t ctimeStamp = 0;
+    int startSearch = 0;
     
 };
 struct CollectThreadParams
@@ -49,16 +50,16 @@ void takeOff(VirtualRC *vrc);
 void *collectRSSI(void *ptr);
 vector<PointData> goFind(CoreAPI *api,const char *pathFile);
 double getFakeRSSI(const Flight *flight,double la,double lo,double al);
-double distance(double lat1, double lon1, double lat2, double lon2, char unit);
+double earth_distance(double lat1, double lon1, double lat2, double lon2, char unit);
 double rssiToDist(double rssi, double altitude);
 vector<PointData> planPath(CoreAPI *api); //Planning Path
 double normalDistribution();
 vector<double> rotation_matrix(int currX, int currY, int preX, int preY);
 double moveDistance_to_speed(double move_distance);
-void flightMove(int currX, int currY, int turnCases, int descision, double move_distance);
 double distance(int x1, int y1, int x2, int y2);
 void addWeight(int currX, int currY, int preX, int preY, double cur_radius, double pre_radius);
 double calConstant(double x, double y, double m);
 int turnDecision(int currX, int currY, int preX, int preY);
 void nextWayPoint(WayPoint waypoint, double lat, double lon);
 void initWayPoint(WayPoint waypoint);
+double coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, vector<PointData> *preRecord, vector<PointData> *curRecord);
