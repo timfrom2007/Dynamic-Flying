@@ -118,13 +118,16 @@ vector<PointData> planPath(CoreAPI *api){
 
     double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX, preY;  //Current X and Y, XY coordinate
     int descision[3];
+
     vector<PointData> preRecord;
     record = goFind(api,"./prePath.txt");
+
     vector<PointData> searchRecord;
     searchRecord = goFind(api,"./moveStraight.txt");
+
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-	addWeight(currX, currY, preX, preY, cur_radius, pre_radius);
+	addWeight(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].RSSI, record[record.size()-1].RSSI, record[record.size()-1].RSSI, cur_radius, pre_radius);
 
 	if(descision==0){
 		searchRecord = goFind(api,"./moveLeft.txt");
@@ -845,6 +848,115 @@ int turnDecision(int currX, int currY, int preX, int preY) {
                 return 2;
             }
         }
+    }
+}
+
+
+
+void flightMove(double* currentX, double* currentY, double* preX, double* preY, int turnCases, int descision, double move_distance) {
+
+    *preX = *currentX;
+    *preY = *currentY;
+
+    switch (abs(turnCases)) {
+        case 1:
+            if (descision == 0) {
+                *currentX += 0;
+                *currentY += -move_distance;
+            } else if (descision == 1) {
+                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 2) {
+                *currentX += move_distance;
+                *currentY += 0;
+            }
+            break;
+        case 2:
+            if (descision == 0) {
+                *currentX += -move_distance;
+                *currentY += 0;
+            } else if (descision == 1) {
+                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 2) {
+                *currentX += 0;
+                *currentY += -move_distance;
+            }
+            break;
+        case 3:
+            if (descision == 0) {
+                *currentX += 0;
+                *currentY += move_distance;
+            } else if (descision == 1) {
+                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 2) {
+                *currentX += -move_distance;
+                *currentY += 0;
+            }
+            break;
+        case 4:
+            if (descision == 0) {
+                *currentX += move_distance;
+                *currentY += 0;
+            } else if (descision == 1) {
+                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 2) {
+                *currentX += 0;
+                *currentY += move_distance;
+            }
+            break;
+        case 5:
+            if (descision == 0) {
+                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 1) {
+                *currentX += 0;
+                *currentY += -move_distance;
+            } else if (descision == 2) {
+                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+            }
+            break;
+        case 6:
+            if (descision == 0) {
+                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 1) {
+                *currentX += -move_distance;
+                *currentY += 0;
+            } else if (descision == 2) {
+                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+            }
+            break;
+        case 7:
+            if (descision == 0) {
+                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 1) {
+                *currentX += 0;
+                *currentY += move_distance;
+            } else if (descision == 2) {
+                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
+            }
+            break;
+        case 8:
+            if (descision == 0) {
+                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+            } else if (descision == 1) {
+                *currentX += move_distance;
+                *currentY += 0;
+            } else if (descision == 2) {
+                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
+            }
+            break;
+        default:
+	    ;
     }
 
 }
