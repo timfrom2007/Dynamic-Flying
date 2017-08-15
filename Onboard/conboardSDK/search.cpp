@@ -116,7 +116,8 @@ vector<PointData> planPath(CoreAPI *api){
 
     // extern variable
 
-    double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX, preY;  //Current X and Y, XY coordinate
+    double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX=0, preY=0;  //Current X and Y, XY coordinated
+    double currLat, currLon, preLat, preLon;
     int descision[3];
 
     vector<PointData> preRecord;
@@ -124,6 +125,10 @@ vector<PointData> planPath(CoreAPI *api){
 
     vector<PointData> searchRecord;
     searchRecord = goFind(api,"./moveStraight.txt");
+
+    currX = 0;
+    currY =
+
 
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
