@@ -118,25 +118,25 @@ vector<PointData> planPath(CoreAPI *api){
 
     double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX=0, preY=0;  //Current X and Y, XY coordinated
     double currLat, currLon, preLat, preLon;
-    
-    
-    int descision[3];
+
+
+    int descision = 1;
 
     vector<PointData> preRecord;
     record = goFind(api,"./prePath.txt");
 
     vector<PointData> searchRecord;
     searchRecord = goFind(api,"./moveStraight.txt");
-    
+
     currLat = record[searchRecord.size()-1].latitude;
     currLon = record[searchRecord.size()-1].longitude;
     preLat = record[record.size()-1].latitude;
     preLon = record[record.size()-1].longitude;
-    
+
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
 
-    flightMove(&currX, &currY, &preX, &preY, turnCases, descision, move_distance);
-
+    flightMove(&currX, &currY, &preX, &preY, turnCases, descision, moveDistance);
+    descision = turnDecision(currX, currY, preX, preY)
 
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
@@ -384,31 +384,31 @@ Dynamic Path Planning Function
 
 vector<double> rotation_matrix(int currX, int currY, int preX, int preY){
 
-    double degree = _PI_ / 4; // Ï€/4 = 45Â°
+    double degree = _PI_ / 4; // £k/4 = 45¢X
     int deltaX = currX - preX;
     int deltaY = currY - preY;
 
     if (deltaX != 0 && deltaY != 0) {
-        if (deltaX > 0 && deltaY < 0) { // â†— Â°
+        if (deltaX > 0 && deltaY < 0) { // ¡ù ¢X
             degree = degree * 7;
-        } else if (deltaX > 0 && deltaY > 0) { // â†˜ Â°
+        } else if (deltaX > 0 && deltaY > 0) { // ¡û ¢X
             degree = degree * 5;
-        } else if (deltaX < 0 && deltaY < 0) { // â†– Â°
+        } else if (deltaX < 0 && deltaY < 0) { // ¡ø ¢X
             degree = degree * 1;
-        } else if (deltaX < 0 && deltaY > 0) { // â†™ Â°
+        } else if (deltaX < 0 && deltaY > 0) { // ¡ú ¢X
             degree = degree * 3;
         }
     } else if (deltaX == 0 && deltaY != 0) {
-        if (deltaY < 0) { // â†‘ Â°
+        if (deltaY < 0) { // ¡ô ¢X
             degree = degree * 0;
-        } else if (deltaY > 0) { // â†“ Â°
+        } else if (deltaY > 0) { // ¡õ ¢X
             degree = degree * 4;
         }
 
     } else if (deltaX != 0 && deltaY == 0) {
-        if (deltaX > 0) { // â†’ Â°
+        if (deltaX > 0) { // ¡÷ ¢X
             degree = degree * 6;
-        } else if (deltaX < 0) { // â† Â°
+        } else if (deltaX < 0) { // ¡ö ¢X
             degree = degree * 2;
         }
     }
@@ -441,15 +441,15 @@ double distance(int x1, int y1, int x2, int y2) {
 
 void addWeight(int currX, int currY, int preX, int preY, double cur_radius, double pre_radius) {
 
-    vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY); //æ—‹è½‰çŸ©é™£
+    vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY); //±ÛÂà¯x°}
     int weight_i;
     int weight_j;
-    if (cur_radius - pre_radius > 0) { //åŠå¾‘è®Šå¤§ï¼Œè¡¨ç¤ºé é›¢
-        for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5ç”¨ä¾†é¡å¤–é ä¼°
+    if (cur_radius - pre_radius > 0) { //¥b®|ÅÜ¤j¡Aªí¥Ü»·Â÷
+        for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5¥Î¨ÓÃB¥~¹w¦ô
             for (int j = currY; j <= currY + cur_radius + 10; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //é¿å…rotateå¾Œï¼Œweight_i&jç‚ºè² æ•¸å‹æ…‹
+                if (weight_i >= 0 && weight_j >= 0) { //Á×§Krotate«á¡Aweight_i&j¬°­t¼Æ«¬ºA
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -467,7 +467,7 @@ void addWeight(int currX, int currY, int preX, int preY, double cur_radius, doub
             for (int j = currY; j >= currY - cur_radius; j--) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //é¿å…rotateå¾Œï¼Œweight_i&jç‚ºè² æ•¸å‹æ…‹
+                if (weight_i >= 0 && weight_j >= 0) { //Á×§Krotate«á¡Aweight_i&j¬°­t¼Æ«¬ºA
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -478,12 +478,12 @@ void addWeight(int currX, int currY, int preX, int preY, double cur_radius, doub
                 }
             }
         }
-    } else if (cur_radius - pre_radius < 0) { //åŠå¾‘è®Šå°ï¼Œè¡¨ç¤ºé è¿‘
-        for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5ç”¨ä¾†é¡å¤–é ä¼°
+    } else if (cur_radius - pre_radius < 0) { //¥b®|ÅÜ¤p¡Aªí¥Ü¾aªñ
+        for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5¥Î¨ÓÃB¥~¹w¦ô
             for (int j = currY; j >= currY - cur_radius - 10; j--) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //é¿å…rotateå¾Œï¼Œweight_i&jç‚ºè² æ•¸å‹æ…‹
+                if (weight_i >= 0 && weight_j >= 0) { //Á×§Krotate«á¡Aweight_i&j¬°­t¼Æ«¬ºA
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -502,7 +502,7 @@ void addWeight(int currX, int currY, int preX, int preY, double cur_radius, doub
             for (int j = currY; j <= currY + cur_radius; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //é¿å…rotateå¾Œï¼Œweight_i&jç‚ºè² æ•¸å‹æ…‹
+                if (weight_i >= 0 && weight_j >= 0) { //Á×§Krotate«á¡Aweight_i&j¬°­t¼Æ«¬ºA
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -516,15 +516,15 @@ void addWeight(int currX, int currY, int preX, int preY, double cur_radius, doub
     }
 }
 
-double calConstant(double x, double y, double m) { //è¨ˆç®—ç›´ç·šå¸¸æ•¸
-    //å‡è¨­ç›´ç·šæ–¹ç¨‹å¼ç‚º y = mx+b
+double calConstant(double x, double y, double m) { //­pºâª½½u±`¼Æ
+    //°²³]ª½½u¤èµ{¦¡¬° y = mx+b
     double b = y - (m * x);
     return b;
 }
 
 int turnDecision(int currX, int currY, int preX, int preY) {
 
-    vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY); //æ—‹è½‰çŸ©é™£
+    vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY); //±ÛÂà¯x°}
     double turn_matrix[3] = {0.0, 0.0, 0.0};
 
     double cur_radius = floor(distance(currX, currY, targetX, targetY));
@@ -534,16 +534,16 @@ int turnDecision(int currX, int currY, int preX, int preY) {
     double split_line1;
     double split_line2;
     if (currX - preX == 0) {
-        slope = 0; //è¡Œé€²è·¯ç·šæ–œç‡
+        slope = 0; //¦æ¶i¸ô½u±×²v
         split_line1 = (slope - tan( _PI_ / 3)) / (tan( _PI_ / 3) * slope + 1);
         split_line2 = (slope + tan( _PI_ / 3)) / (1 - tan( _PI_ / 3) * slope);
     } else {
-        slope = (currY - preY) / (currX - preX); //è¡Œé€²è·¯ç·šæ–œç‡
+        slope = (currY - preY) / (currX - preX); //¦æ¶i¸ô½u±×²v
         split_line1 = (slope - tan( _PI_ / 6)) / (tan( _PI_ / 6) * slope + 1);
         split_line2 = (slope + tan( _PI_ / 6)) / (1 - tan( _PI_ / 6) * slope);
     }
 
-    if (split_line2 > split_line1) { //æŠŠæ–œç‡æ¯”è¼ƒå¤§çš„ç•¶æˆline1
+    if (split_line2 > split_line1) { //§â±×²v¤ñ¸û¤jªº·í¦¨line1
         split_line1 = split_line1 + split_line2;
         split_line2 = split_line1 - split_line2;
         split_line1 = split_line1 - split_line2;
@@ -555,26 +555,26 @@ int turnDecision(int currX, int currY, int preX, int preY) {
     //console.log("currX: %s, currY: %s, preX: %s, preY: %s", currX, currY, preX, preY);
 
 
-    if (currX - preX > 0 && currY - preY < 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†—
+    if (currX - preX > 0 && currY - preY < 0) { //¦æ¶i¤è¦V¬°¡ù
         turnCase = 1;
-    } else if (currX - preX < 0 && currY - preY < 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†–
+    } else if (currX - preX < 0 && currY - preY < 0) { //¦æ¶i¤è¦V¬°¡ø
         turnCase = 2;
-    } else if (currX - preX < 0 && currY - preY > 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†™
+    } else if (currX - preX < 0 && currY - preY > 0) { //¦æ¶i¤è¦V¬°¡ú
         turnCase = 3;
-    } else if (currX - preX > 0 && currY - preY > 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†˜
+    } else if (currX - preX > 0 && currY - preY > 0) { //¦æ¶i¤è¦V¬°¡û
         turnCase = 4;
-    } else if (currX - preX == 0 && currY - preY < 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†‘
+    } else if (currX - preX == 0 && currY - preY < 0) { //¦æ¶i¤è¦V¬°¡ô
         turnCase = 5;
-    } else if (currX - preX < 0 && currY - preY == 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†
+    } else if (currX - preX < 0 && currY - preY == 0) { //¦æ¶i¤è¦V¬°¡ö
         turnCase = 6;
-    } else if (currX - preX == 0 && currY - preY > 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†“
+    } else if (currX - preX == 0 && currY - preY > 0) { //¦æ¶i¤è¦V¬°¡õ
         turnCase = 7;
-    } else if (currX - preX > 0 && currY - preY == 0) { //è¡Œé€²æ–¹å‘ç‚ºâ†’
+    } else if (currX - preX > 0 && currY - preY == 0) { //¦æ¶i¤è¦V¬°¡÷
         turnCase = 8;
     }
 
     //console.log("TurnCase: ", turnCase);
-    if (cur_radius - pre_radius <= 0) { //åŠå¾‘è®Šå°ï¼Œè¡¨ç¤ºé è¿‘
+    if (cur_radius - pre_radius <= 0) { //¥b®|ÅÜ¤p¡Aªí¥Ü¾aªñ
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j >= currY - cur_radius - 10; j--) {
                 int weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
@@ -688,7 +688,7 @@ int turnDecision(int currX, int currY, int preX, int preY) {
                 }
             }
         }
-    } else if (cur_radius - pre_radius > 0) { //åŠå¾‘è®Šå¤§ï¼Œè¡¨ç¤ºé é›¢
+    } else if (cur_radius - pre_radius > 0) { //¥b®|ÅÜ¤j¡Aªí¥Ü»·Â÷
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j <= currY + cur_radius + 10; j++) {
                 int weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
@@ -806,7 +806,7 @@ int turnDecision(int currX, int currY, int preX, int preY) {
     //console.log("TrunMatrix: %s, %s, %s", turn_matrix[0].toFixed(5), turn_matrix[1].toFixed(5), turn_matrix[2].toFixed(5));
 
     srand(time(NULL));
-    if (cur_radius < pre_radius) { //åŠå¾‘è®Šå°ï¼Œè¡¨ç¤ºé è¿‘
+    if (cur_radius < pre_radius) { //¥b®|ÅÜ¤p¡Aªí¥Ü¾aªñ
         if (bool_predecision == 1) {
             bool_predecision = 0;
             return preturn;
