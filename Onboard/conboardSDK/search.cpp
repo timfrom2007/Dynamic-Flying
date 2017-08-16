@@ -118,6 +118,8 @@ vector<PointData> planPath(CoreAPI *api){
 
     double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX=0, preY=0;  //Current X and Y, XY coordinated
     double currLat, currLon, preLat, preLon;
+    
+    
     int descision[3];
 
     vector<PointData> preRecord;
@@ -125,9 +127,15 @@ vector<PointData> planPath(CoreAPI *api){
 
     vector<PointData> searchRecord;
     searchRecord = goFind(api,"./moveStraight.txt");
+    
+    currLat = record[searchRecord.size()-1].latitude;
+    currLon = record[searchRecord.size()-1].longitude;
+    preLat = record[record.size()-1].latitude;
+    preLon = record[record.size()-1].longitude;
+    
+    double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
 
-    currX = 0;
-    currY =
+    flightMove(&currX, &currY, &preX, &preY, turnCases, descision, move_distance);
 
 
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
