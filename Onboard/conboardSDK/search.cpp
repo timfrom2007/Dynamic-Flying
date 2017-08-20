@@ -89,19 +89,19 @@ void *collectRSSI(void *ptr)
 
 		p.ctimeStamp = (finish - start)/ CLOCKS_PER_SEC;
 		record->push_back(p);
-    }
     */
-    p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, startSearch);
-    if(p.startSearch == 0){
-	    if(p.RSSI<0){
-			p.startSearch = 1;
-		}
-	}
-	else{
-		p.startSearch = 1;
-	}
+        p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, p.startSearch);
+        if(p.startSearch == 0){
+            if(p.RSSI<0){
+                p.startSearch = 1;
+            }
+        }
+        else{
+            p.startSearch = 1;
+        }
 
-    return 0;
+        return 0;
+    }
 }
 
 vector<PointData> planPath(CoreAPI *api){
@@ -114,17 +114,38 @@ vector<PointData> planPath(CoreAPI *api){
     int preturn = 1;
     int descision = 1;
     int bool_predecision = 0;  //Previous decision is correct or not
-    double map_weight[600][1000];
-    int map_count[600][1000];
 
+    /////////////////////
+    // 2D Array malloc //
+    /////////////////////
+    int i=0, j=0;
+    double **map_weight = NULL;
+    int **map_count = NULL;
+
+    // 生成一維指標陣列
+    map_count = new int*[600];
+    map_weight = new double*[600];
+
+    // 每個指標陣列再生成整數陣列
+    for(i=0; i<600; i++){
+        map_count[i] = new int[1000];
+        map_weight[i] = new double[1000];
+    }
+    // write
+    for(i=0; i<600; i++) {
+        for(j=0; j<1000; j++)
+            map_count[i][j] = 0;
+            map_weight[i][j] = 0.0;
+    }
     /////////////////////
     // extern variable //
     /////////////////////
 
+
     double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX=0, preY=0;  //Current X and Y, XY coordinated
     double currLat, currLon, preLat, preLon;
 
-    vector<PointData> preRecord;
+    vector<PointData> record;
     record = goFind(api,"./prePath.txt");
 
     vector<PointData> searchRecord;
@@ -141,9 +162,9 @@ vector<PointData> planPath(CoreAPI *api){
 
 
     do{
-        flightMove(&currX, &currY, &preX, &preY, turnCases, descision, moveDistance);
-        addWeight(currX, currX, preX, preY, cur_radius, pre_radius, &map_weight, &map_weight);
-        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, cur_radius, pre_radius);
+        flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
+        addWeight(currX, currX, preX, preY, cur_radius, pre_radius, map_weight, map_count);
+        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count);
 
         if(descision==0){
             searchRecord = goFind(api,"./moveLeft.txt");
@@ -155,7 +176,7 @@ vector<PointData> planPath(CoreAPI *api){
             searchRecord = goFind(api,"./moveRight.txt");
         }
 
-        record.insert( preRecord.end(), searchRecord.begin(), searchRecord.end() );
+        record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
         currLat = record[searchRecord.size()-1].latitude;
         currLon = record[searchRecord.size()-1].longitude;
         preLat = record[record.size()-1].latitude;
@@ -165,7 +186,7 @@ vector<PointData> planPath(CoreAPI *api){
         cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
 
-    }while(cur_radius<20)
+    }while(cur_radius<20);
 
 
 
@@ -182,7 +203,7 @@ vector<PointData> planPath(CoreAPI *api){
             cout << 7 << endl;
 
 */
-    return preRecord;
+    return record;
 }
 
 vector<PointData> goFind(CoreAPI *api,const char *pathFile)
@@ -252,16 +273,16 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
   dist = dist * 1.609344;
   return (dist);
 }
-
+/*
 double coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, vector<PointData> *preRecord, vector<PointData> *curRecord){  //XY coordinate to Lon,Lat coordinate
-	/* we solve the linear system
-     * ax+by=e  lonA*lon + latA*lat = xt*xa + yt*ya
-     * cx+dy=f  lonB*lon + latB*lat = xt*xb + yt*yb
-     */
-    double a = *preRecord[*preRecord.size()-1].longitude;
-	double b = *preRecord[*preRecord.size()-1].latitude;
-	double c = *curRecord[*curRecord.size()-1].longitude;
-	double d = *curRecord[*curRecord.size()-1].latitude;
+	//we solve the linear system
+    //ax+by=e  lonA*lon + latA*lat = xt*xa + yt*ya
+    //cx+dy=f  lonB*lon + latB*lat = xt*xb + yt*yb
+    //
+    double a = (*preRecord)[preRecord->size()-1].longitude;
+	double b = (*preRecord)[preRecord->size()-1].latitude;
+	double c = (*curRecord)[curRecord->size()-1].longitude;
+	double d = (*curRecord)[curRecord->size()-1].latitude;
 	double e = xt*xa + yt*ya;
 	double f = xt*xb + yt*yb;
 
@@ -269,8 +290,8 @@ double coordinateChanger(double xt, double yt, double xa, double ya, double xb, 
 
 	double determinant = a*d - b*c;
     if(determinant != 0) {
-        double result[0] = (e*d - b*f)/determinant;
-        double result[1] = (a*f - e*c)/determinant;
+        result[0] = (e*d - b*f)/determinant;
+        result[1] = (a*f - e*c)/determinant;
     } else {
         printf("Cramer equations system: determinant is zero\n"
                 "there are either no solutions or many solutions exist.\n");
@@ -366,6 +387,8 @@ PointData calculatePos4(vector<PointData> *record) //Modified Differential RSSI
     pData.longitude = pLon/totalWeight;
     return pData;
 }
+
+*/
 double rssiToDist(double rssi, double altitude)
 {
     double n=2, A=-10; //n:path-loss exponent, A:RSSI per unit
@@ -450,13 +473,13 @@ double distance(int x1, int y1, int x2, int y2) {
     return d;
 }
 
-void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double* map_weight, int* map_count) {
+void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count) {
 
     vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY);
     int weight_i;
     int weight_j;
-    currX = floor(currX)
-    currY = floor(currY)
+    currX = floor(currX);
+    currY = floor(currY);
 
     if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
@@ -536,7 +559,7 @@ double calConstant(double x, double y, double m) {
     return b;
 }
 
-int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius) {
+int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count) {
 
     vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY);
     double turn_matrix[3] = {0.0, 0.0, 0.0};
@@ -560,7 +583,7 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
         split_line1 = split_line1 - split_line2;
     }
     double constant1 = calConstant(currX, currY, split_line1);
-    double constant2 = calConstant(currX, currY, split_line2)
+    double constant2 = calConstant(currX, currY, split_line2);
 
 
     if (currX - preX > 0 && currY - preY > 0) {
@@ -702,7 +725,7 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                 if (weight_i >= 0 && weight_j >= 0) {
                     if (map_weight[weight_i][weight_j] > 0) {
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
-                            switch (turnCase) {
+                            switch (*turnCase) {
                                 case 1:
                                     if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
@@ -984,10 +1007,10 @@ double median_filter(int* rssi)
     double result;
     int mid = sizeof(rssi)/2;
     if(sizeof(*rssi)%2==0){
-        result = (*rssi[mid]+*rssi[mid+1])/2;
+        result = (rssi[mid]+rssi[mid+1])/2;
     }
     else{
-        result = *rssi[mid+1];
+        result = rssi[mid+1];
     }
     return result;
 }

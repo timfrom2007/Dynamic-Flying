@@ -28,7 +28,7 @@ struct PointData
     time_t timeStamp = 0;
     clock_t ctimeStamp = 0;
     int startSearch = 0;
-    
+
 };
 struct CollectThreadParams
 {
@@ -42,10 +42,10 @@ double latitude(const Flight* flight);
 double longitude(const Flight* flight);
 double altitude(const Flight* flight);
 void control(VirtualRC *vrc ,int pitch,int roll);
-PointData calculatePos(vector<PointData> *record); //Pure RSSI
-PointData calculatePos2(vector<PointData> *record); //Differential RSSI
-PointData calculatePos3(vector<PointData> *record); //Trilateration
-PointData calculatePos4(vector<PointData> *record); //Modified Differential RSSI
+//PointData calculatePos(vector<PointData> *record); //Pure RSSI
+//PointData calculatePos2(vector<PointData> *record); //Differential RSSI
+//PointData calculatePos3(vector<PointData> *record); //Trilateration
+//PointData calculatePos4(vector<PointData> *record); //Modified Differential RSSI
 void takeOff(VirtualRC *vrc);
 void *collectRSSI(void *ptr);
 vector<PointData> goFind(CoreAPI *api,const char *pathFile);
@@ -57,11 +57,11 @@ double normalDistribution();
 vector<double> rotation_matrix(double currX, double currY, double preX, double preY);
 double moveDistance_to_speed(double move_distance);
 double distance(int x1, int y1, int x2, int y2);
-void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double* map_weight, int* map_count);
+void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count);
 double calConstant(double x, double y, double m);
-int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius);
+int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count);
 void nextWayPoint(WayPoint waypoint, double lat, double lon);
 void initWayPoint(WayPoint waypoint);
-double coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, vector<PointData> *preRecord, vector<PointData> *curRecord);
+//double coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, vector<PointData> *preRecord, vector<PointData> *curRecord);
 void flightMove(double* currentX, double* currentY, double* preX, double* preY, int turnCases, int descision, double move_distance);
-median_filter(int* rssi);
+double median_filter(int* rssi);

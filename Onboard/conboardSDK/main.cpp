@@ -19,7 +19,7 @@ using namespace DJI::onboardSDK;
 int main(int argc, char *argv[])
 {
 
-    /* ---- initial ---- */ 
+    /* ---- initial ---- */
 
     HardDriverManifold driver("/dev/ttyAMA0", 230400);
     driver.init();
@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     //cin>>a>>b;
     //cout<<getFakeRSSI(flight,a,b,0);
 
-    /*  ---- flight ---- */ 
+    /*  ---- flight ---- */
 
     cout<<"Pass ENTER to goFind() ..."<<endl;fgetc(stdin);
     vector<PointData> record = planPath(&api);
@@ -64,15 +64,8 @@ int main(int argc, char *argv[])
 	fprintf(log,"%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].ctimeStamp);
     }
     fclose(log);
-    PointData p = calculatePos(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    p = calculatePos2(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    p =calculatePos3(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    p =calculatePos4(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
- 
+
+
     /* ---- flight ----  */
 
 
