@@ -123,17 +123,17 @@ vector<PointData> planPath(CoreAPI *api){
     int **map_count = NULL;
 
     // 生成一維指標陣列
-    map_count = new int*[600];
-    map_weight = new double*[600];
+    map_count = new int*[400];
+    map_weight = new double*[400];
 
     // 每個指標陣列再生成整數陣列
-    for(i=0; i<600; i++){
-        map_count[i] = new int[1000];
-        map_weight[i] = new double[1000];
+    for(i=0; i<400; i++){
+        map_count[i] = new int[800];
+        map_weight[i] = new double[800];
     }
     // write
-    for(i=0; i<600; i++) {
-        for(j=0; j<1000; j++)
+    for(i=0; i<400; i++) {
+        for(j=0; j<1800; j++)
             map_count[i][j] = 0;
             map_weight[i][j] = 0.0;
     }
