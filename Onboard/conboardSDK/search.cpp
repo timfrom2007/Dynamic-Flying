@@ -133,7 +133,7 @@ vector<PointData> planPath(CoreAPI *api){
     }
     // write
     for(i=0; i<400; i++) {
-        for(j=0; j<1800; j++)
+        for(j=0; j<800; j++)
             map_count[i][j] = 0;
             map_weight[i][j] = 0.0;
     }
