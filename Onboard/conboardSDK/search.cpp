@@ -91,7 +91,7 @@ void *collectRSSI(void *ptr)
 		record->push_back(p);
     }
     */
-    p.RSSI = getFakeRSSI(params->flight,0.393454,1.988964,0, startSearch);
+    p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, startSearch);
     if(p.startSearch == 0){
 	    if(p.RSSI<0){
 			p.startSearch = 1;
@@ -113,7 +113,7 @@ vector<PointData> planPath(CoreAPI *api){
     int turnCase = 0;
     int preturn = 1;
     int descision = 1;
-    int bool_predecision = 0;
+    int bool_predecision = 0;  //Previous decision is correct or not
     double map_weight[600][1000];
     int map_count[600][1000];
 
@@ -123,9 +123,6 @@ vector<PointData> planPath(CoreAPI *api){
 
     double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX=0, preY=0;  //Current X and Y, XY coordinated
     double currLat, currLon, preLat, preLon;
-
-
-
 
     vector<PointData> preRecord;
     record = goFind(api,"./prePath.txt");
@@ -142,28 +139,35 @@ vector<PointData> planPath(CoreAPI *api){
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
 
-    flightMove(&currX, &currY, &preX, &preY, turnCases, descision, moveDistance);
-    addWeight(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].RSSI, record[record.size()-1].RSSI, record[record.size()-1].RSSI, cur_radius, pre_radius);
 
-    descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision);
+    do{
+        flightMove(&currX, &currY, &preX, &preY, turnCases, descision, moveDistance);
+        addWeight(currX, currX, preX, preY, cur_radius, pre_radius, &map_weight, &map_weight);
+        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, cur_radius, pre_radius);
+
+        if(descision==0){
+            searchRecord = goFind(api,"./moveLeft.txt");
+        }
+        else if(descision==1){
+            searchRecord = goFind(api,"./moveStraight.txt");
+        }
+        else if(descision==2){
+            searchRecord = goFind(api,"./moveRight.txt");
+        }
+
+        record.insert( preRecord.end(), searchRecord.begin(), searchRecord.end() );
+        currLat = record[searchRecord.size()-1].latitude;
+        currLon = record[searchRecord.size()-1].longitude;
+        preLat = record[record.size()-1].latitude;
+        preLon = record[record.size()-1].longitude;
+
+        moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000;
+        cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
+        pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+
+    }while(cur_radius<20)
 
 
-
-	if(descision==0){
-		searchRecord = goFind(api,"./moveLeft.txt");
-	}
-	else if(descision==1){
-		searchRecord = goFind(api,"./moveStraight.txt");
-	}
-	else if(descision==2){
-		searchRecord = goFind(api,"./moveRight.txt");
-	}
-
-    cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
-    pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-
-
-    record.insert( preRecord.end(), searchRecord.begin(), searchRecord.end() );
 
 /*
 	    if(vote_4>=0){
@@ -389,7 +393,7 @@ Dynamic Path Planning Function
 
 
 
-vector<double> rotation_matrix(int currX, int currY, int preX, int preY){
+vector<double> rotation_matrix(double currX, double currY, double preX, double preY){
 
     double degree = _PI_ / 4; // £k/4 = 45¢X
     int deltaX = currX - preX;
@@ -446,11 +450,14 @@ double distance(int x1, int y1, int x2, int y2) {
     return d;
 }
 
-void addWeight(int currX, int currY, int preX, int preY, double cur_radius, double pre_radius) {
+void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double* map_weight, int* map_count) {
 
     vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY);
     int weight_i;
     int weight_j;
+    currX = floor(currX)
+    currY = floor(currY)
+
     if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j >= currY - cur_radius - 10; j++) {
@@ -529,13 +536,10 @@ double calConstant(double x, double y, double m) {
     return b;
 }
 
-int turnDecision(int currX, int currY, int preX, int preY, int* preturn, int* bool_predecision, int* turnCase) {
+int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius) {
 
     vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY);
     double turn_matrix[3] = {0.0, 0.0, 0.0};
-
-    double cur_radius = floor(distance(currX, currY, targetX, targetY));
-    double pre_radius = floor(distance(preX, preY, targetX, targetY));
 
     double slope;
     double split_line1;
@@ -979,11 +983,11 @@ double median_filter(int* rssi)
 {
     double result;
     int mid = sizeof(rssi)/2;
-    if(sizeof(rssi)%2==0){
-        result = (rssi[mid]+rssi[mid+1])/2;
+    if(sizeof(*rssi)%2==0){
+        result = (*rssi[mid]+*rssi[mid+1])/2;
     }
     else{
-        result = rssi[mid+1];
+        result = *rssi[mid+1];
     }
     return result;
 }
