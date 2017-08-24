@@ -105,6 +105,8 @@ void *collectRSSI(void *ptr)
 }
 
 vector<PointData> planPath(CoreAPI *api){
+    
+    cout << "1" <<endl;
 
     /////////////////////
     // extern variable //
@@ -118,13 +120,11 @@ vector<PointData> planPath(CoreAPI *api){
     /////////////////////
     // 2D Array malloc //
     /////////////////////
-    int i=0, j=0;
-    double **map_weight = NULL;
-    int **map_count = NULL;
-
+    
     // 生成一維指標陣列
-    map_count = new int*[400];
-    map_weight = new double*[400];
+    int i=0, j=0;
+    double **map_weight = new double*[400];
+    int **map_count = new int*[400];
 
     // 每個指標陣列再生成整數陣列
     for(i=0; i<400; i++){
@@ -133,23 +133,32 @@ vector<PointData> planPath(CoreAPI *api){
     }
     // write
     for(i=0; i<400; i++) {
-        for(j=0; j<800; j++)
+        for(j=0; j<800; j++){
             map_count[i][j] = 0;
             map_weight[i][j] = 0.0;
+        }
     }
     /////////////////////
     // extern variable //
     /////////////////////
 
+    cout << "2" <<endl;
+    
+    double currX = 0.0, currY=0.0, preX=0.0, preY=0.0;  //X and Y, in XY coordinate system
+    double currLat=0.0, currLon=0.0, preLat=0.0, preLon=0.0; //Latitude and Longitude, in Geographic coordinate system
+    double guessX=0.0, guessY=0.0, guessLon=0.0, guessLat=0.0;  //guess Target position, need to transform
+    vector<double> r_matrix = NULL;
+    
 
-    double currX = 0, currY=0, guessX, guessY, guessLon, guessLat, preX=0, preY=0;  //Current X and Y, XY coordinated
-    double currLat, currLon, preLat, preLon;
-
-    vector<PointData> record;
+    vector<PointData> record;  //main record
     record = goFind(api,"./prePath.txt");
+    
+    cout << "3" <<endl;
 
-    vector<PointData> searchRecord;
+    vector<PointData> searchRecord; // each turn record
     searchRecord = goFind(api,"./moveStraight.txt");
+    
+    cout << "4" <<endl;
 
     currLat = record[searchRecord.size()-1].latitude;
     currLon = record[searchRecord.size()-1].longitude;
@@ -159,13 +168,20 @@ vector<PointData> planPath(CoreAPI *api){
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+    
+    searchRecord.clear();
 
+    cout << "5" <<endl;
 
     do{
         flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
-        addWeight(currX, currX, preX, preY, cur_radius, pre_radius, map_weight, map_count);
-        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count);
-
+        
+        r_matrix = rotation_matrix(currX, currY, preX, preY);
+        
+        addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
+        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count, r_matrix);
+        
+        searchRecord.clear();
         if(descision==0){
             searchRecord = goFind(api,"./moveLeft.txt");
         }
@@ -473,17 +489,18 @@ double distance(int x1, int y1, int x2, int y2) {
     return d;
 }
 
-void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count) {
+void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix) {
 
-    vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY);
-    int weight_i;
-    int weight_j;
+    int weight_i=0;
+    int weight_j=0;
     currX = floor(currX);
     currY = floor(currY);
+    cur_radius = floor(cur_radius);
+    pre_radius = floor(pre_radius);
 
     if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
-            for (int j = currY; j >= currY - cur_radius - 10; j++) {
+            for (int j = currY; j >= currY + cur_radius + 10; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) {
@@ -559,9 +576,8 @@ double calConstant(double x, double y, double m) {
     return b;
 }
 
-int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count) {
-
-    vector<double> r_matrix = rotation_matrix(currX, currY, preX, preY);
+int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix) {
+    
     double turn_matrix[3] = {0.0, 0.0, 0.0};
 
     double slope;
