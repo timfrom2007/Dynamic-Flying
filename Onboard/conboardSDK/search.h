@@ -24,7 +24,7 @@ struct PointData
     float64_t latitude = 0;
     float64_t longitude = 0;
     float64_t altitude = 0;
-    double RSSI = 0;
+    double RSSI = 0.0;
     time_t timeStamp = 0;
     clock_t ctimeStamp = 0;
     int startSearch = 0;
@@ -54,7 +54,7 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
 double rssiToDist(double rssi, double altitude);
 vector<PointData> planPath(CoreAPI *api); //Planning Path
 double normalDistribution();
-vector<double> rotation_matrix(double currX, double currY, double preX, double preY);
+void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix);
 double moveDistance_to_speed(double move_distance);
 double distance(int x1, int y1, int x2, int y2);
 void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix);

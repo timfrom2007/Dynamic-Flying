@@ -91,21 +91,14 @@ void *collectRSSI(void *ptr)
 		record->push_back(p);
     */
         p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, p.startSearch);
-        if(p.startSearch == 0){
-            if(p.RSSI<0){
-                p.startSearch = 1;
-            }
-        }
-        else{
-            p.startSearch = 1;
-        }
+
 
         return 0;
     }
 }
 
 vector<PointData> planPath(CoreAPI *api){
-    
+
     cout << "1" <<endl;
 
     /////////////////////
@@ -120,7 +113,7 @@ vector<PointData> planPath(CoreAPI *api){
     /////////////////////
     // 2D Array malloc //
     /////////////////////
-    
+
     // 生成一維指標陣列
     int i=0, j=0;
     double **map_weight = new double*[400];
@@ -143,21 +136,19 @@ vector<PointData> planPath(CoreAPI *api){
     /////////////////////
 
     cout << "2" <<endl;
-    
+
     double currX = 0.0, currY=0.0, preX=0.0, preY=0.0;  //X and Y, in XY coordinate system
     double currLat=0.0, currLon=0.0, preLat=0.0, preLon=0.0; //Latitude and Longitude, in Geographic coordinate system
     double guessX=0.0, guessY=0.0, guessLon=0.0, guessLat=0.0;  //guess Target position, need to transform
-    vector<double> r_matrix = NULL;
-    
+    vector<double> r_matrix;
 
-    vector<PointData> record;  //main record
-    record = goFind(api,"./prePath.txt");
-    
+    vector<PointData> record = goFind(api,"./preFlight.txt");  //main record
+
     cout << "3" <<endl;
 
     vector<PointData> searchRecord; // each turn record
     searchRecord = goFind(api,"./moveStraight.txt");
-    
+
     cout << "4" <<endl;
 
     currLat = record[searchRecord.size()-1].latitude;
@@ -168,19 +159,18 @@ vector<PointData> planPath(CoreAPI *api){
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-    
-    searchRecord.clear();
+
 
     cout << "5" <<endl;
 
     do{
         flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
-        
-        r_matrix = rotation_matrix(currX, currY, preX, preY);
-        
+        r_matrix.clear();
+        rotation_matrix(currX, currY, preX, preY, r_matrix);
+
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count, r_matrix);
-        
+
         searchRecord.clear();
         if(descision==0){
             searchRecord = goFind(api,"./moveLeft.txt");
@@ -224,29 +214,42 @@ vector<PointData> planPath(CoreAPI *api){
 
 vector<PointData> goFind(CoreAPI *api,const char *pathFile)
 {
+
     VirtualRC vrc(api);
     vrc.setControl(true,VirtualRC::CutOff::CutOff_ToRealRC);
+        cout << "2.1" <<endl;
     FILE * fp = fopen(pathFile,"r");
+    if(!fp){
+        cout << "No FP"<<endl;
+    }
     int pitch=0, roll=0, yaw=0;
+
     vector<PointData> record;
+    cout << "2.2" <<endl;
     pthread_t collectThr;
     CollectThreadParams params;
     params.record = &record;
     params.flight = new Flight(api);
+    cout << "2.3" <<endl;
 
     /* ---- start flight ---- */
     pthread_create(&collectThr,NULL,collectRSSI,&params);
+    cout << "2.35" <<endl;
     fscanf(fp,"%d %d",&pitch,&yaw);
+    cout << "2.4" <<endl;
 
     do{
-		if(record[record.size()-1].startSearch != record[record.size()-2].startSearch){
-			return record;
-		}
+
     	cout << "pitch:" << pitch << "  yaw:" << yaw <<endl;
     	control(&vrc,pitch,yaw);
+    	cout << "2.43" <<endl;
     	usleep(100 * 1000);
+    	cout << "2.45" <<endl;
     	fscanf(fp,"%d %d",&pitch,&yaw);
+        cout << "2.48" <<endl;
     }while(!feof(fp));
+
+    cout << "2.5" <<endl;
 
     params.isFlying = false;
     pthread_join(collectThr,NULL);
@@ -431,8 +434,7 @@ Dynamic Path Planning Function
 */
 
 
-
-vector<double> rotation_matrix(double currX, double currY, double preX, double preY){
+void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix){
 
     double degree = _PI_ / 4; // £k/4 = 45¢X
     int deltaX = currX - preX;
@@ -463,13 +465,11 @@ vector<double> rotation_matrix(double currX, double currY, double preX, double p
         }
     }
 
-    vector<double> r_matrix;
+
     r_matrix.push_back(cos(degree));
     r_matrix.push_back(sin(degree));
     r_matrix.push_back(-sin(degree));
     r_matrix.push_back(cos(degree));
-
-    return r_matrix;
 }
 
 double moveDistance_to_speed(double move_distance){
@@ -577,7 +577,7 @@ double calConstant(double x, double y, double m) {
 }
 
 int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix) {
-    
+
     double turn_matrix[3] = {0.0, 0.0, 0.0};
 
     double slope;
