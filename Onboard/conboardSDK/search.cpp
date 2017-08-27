@@ -44,57 +44,57 @@ void *collectRSSI(void *ptr)
     clock_t start=clock(), finish;
 
     while(params->isFlying){
-	usleep(100*1000);
+        usleep(100*1000);
         //finish = clock();
-	PointData p;
-	p.latitude = latitude(params->flight);
-	p.longitude = longitude(params->flight);
-	p.altitude = altitude(params->flight);
+        PointData p;
+        p.latitude = latitude(params->flight);
+        p.longitude = longitude(params->flight);
+        p.altitude = altitude(params->flight);
+        p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, p.startSearch);
 
+        struct filtering_result{
+            float median;
+        } filter;
 
-	struct filtering_result{
-    	float median;
-    } filter;
-/*
-	iwrange range;
-	int sock;
-	wireless_info info;
-	sock = iw_sockets_open();
-	int collect[50];
-
-
-	if(iw_get_range_info(sock,"wlan0",&range)<0){
-        printf("Error\n");
-        exit(2);
-	}
-
-   	int i=0;
-    int count=0;
-  	while(i<1000){
-	    iw_get_stats(sock,"wlan0",&(info.stats),&range, 1);
-	    int r = (int8_t)info.stats.qual.level;
-	    if(i%20==0){
-	    	collect[count] = (int8_t)info.stats.qual.level;
-	    	//printf("%d\n",(int8_t)info.stats.qual.level);
-	    	count++;
-	    }
-	    //usleep(100);
-        i++;
-	}
-		sort(collect, collect+50);
-	  	filter.median = median_filter(collect);
-
-		p.RSSI = filter.median;
 		finish = clock();
 
 		p.ctimeStamp = (finish - start)/ CLOCKS_PER_SEC;
 		record->push_back(p);
-    */
-        p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, p.startSearch);
 
-
-        return 0;
     }
+    return 0;
+    /*
+        iwrange range;
+        int sock;
+        wireless_info info;
+        sock = iw_sockets_open();
+        int collect[50];
+
+
+        if(iw_get_range_info(sock,"wlan0",&range)<0){
+            printf("Error\n");
+            exit(2);
+        }
+
+        int i=0;
+        int count=0;
+        while(i<1000){
+            iw_get_stats(sock,"wlan0",&(info.stats),&range, 1);
+            int r = (int8_t)info.stats.qual.level;
+            if(i%20==0){
+                collect[count] = (int8_t)info.stats.qual.level;
+                //printf("%d\n",(int8_t)info.stats.qual.level);
+                count++;
+            }
+            //usleep(100);
+            i++;
+        }
+
+		sort(collect, collect+50);
+	  	filter.median = median_filter(collect);
+
+		p.RSSI = filter.median;
+    */
 }
 
 vector<PointData> planPath(CoreAPI *api){
@@ -105,7 +105,7 @@ vector<PointData> planPath(CoreAPI *api){
     // extern variable //
     /////////////////////
 
-    int turnCase = 0;
+    int turnCase = 5;
     int preturn = 1;
     int descision = 1;
     int bool_predecision = 0;  //Previous decision is correct or not
@@ -146,30 +146,35 @@ vector<PointData> planPath(CoreAPI *api){
 
     cout << "3" <<endl;
 
-    vector<PointData> searchRecord; // each turn record
-    searchRecord = goFind(api,"./moveStraight.txt");
+    vector<PointData> searchRecord = goFind(api,"./moveStraight.txt"); // each turn record
 
     cout << "4" <<endl;
 
-    currLat = record[searchRecord.size()-1].latitude;
-    currLon = record[searchRecord.size()-1].longitude;
+    currLat = searchRecord[searchRecord.size()-1].latitude;
+    currLon = searchRecord[searchRecord.size()-1].longitude;
     preLat = record[record.size()-1].latitude;
     preLon = record[record.size()-1].longitude;
+
+    cout << "5" <<endl;
 
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
 
 
-    cout << "5" <<endl;
+    cout << "Flag:6" <<endl;
 
     do{
         flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
+        cout << currX << " " << currY <<endl;
+
         r_matrix.clear();
         rotation_matrix(currX, currY, preX, preY, r_matrix);
-
+        cout << "Flag:7" <<endl;
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
+        cout << "Flag:8" <<endl;
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count, r_matrix);
+        cout << descision << endl;
 
         searchRecord.clear();
         if(descision==0){
@@ -192,7 +197,7 @@ vector<PointData> planPath(CoreAPI *api){
         cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
 
-    }while(cur_radius<20);
+    }while(cur_radius>20);
 
 
 
@@ -217,43 +222,34 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile)
 
     VirtualRC vrc(api);
     vrc.setControl(true,VirtualRC::CutOff::CutOff_ToRealRC);
-        cout << "2.1" <<endl;
+
     FILE * fp = fopen(pathFile,"r");
-    if(!fp){
-        cout << "No FP"<<endl;
-    }
     int pitch=0, roll=0, yaw=0;
 
     vector<PointData> record;
-    cout << "2.2" <<endl;
+
     pthread_t collectThr;
     CollectThreadParams params;
     params.record = &record;
     params.flight = new Flight(api);
-    cout << "2.3" <<endl;
+
 
     /* ---- start flight ---- */
     pthread_create(&collectThr,NULL,collectRSSI,&params);
-    cout << "2.35" <<endl;
     fscanf(fp,"%d %d",&pitch,&yaw);
-    cout << "2.4" <<endl;
 
     do{
-
     	cout << "pitch:" << pitch << "  yaw:" << yaw <<endl;
     	control(&vrc,pitch,yaw);
-    	cout << "2.43" <<endl;
     	usleep(100 * 1000);
-    	cout << "2.45" <<endl;
     	fscanf(fp,"%d %d",&pitch,&yaw);
-        cout << "2.48" <<endl;
-    }while(!feof(fp));
 
-    cout << "2.5" <<endl;
+    }while(!feof(fp));
 
     params.isFlying = false;
     pthread_join(collectThr,NULL);
     cout<< "Record point: " << record.size() <<endl;
+
     return record;
 }
 
@@ -266,9 +262,11 @@ double getFakeRSSI(const Flight *flight,double la,double lo,double al, int start
     dist = sqrt((dist*dist)+(alt-al)*(alt-al));
     double n=2, A= -10; //n:path-loss exponent, A:RSSI per unit
     double rssi = A - 10*n*log10(dist); // + 1.4 * normalDistribution();
+    /*
     if(dist>300 && startSearch==0){
 		rssi = 1;
 	}
+	*/
     return rssi;
 }
 
@@ -497,10 +495,11 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
     currY = floor(currY);
     cur_radius = floor(cur_radius);
     pre_radius = floor(pre_radius);
-
+    cout << currX<<" "<<currY <<endl;
+    cout << cur_radius << " "  << pre_radius << endl;
     if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
-            for (int j = currY; j >= currY + cur_radius + 10; j++) {
+            for (int j = currY; j >= currY - cur_radius + 10; j--) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
                 if (weight_i >= 0 && weight_j >= 0) {
@@ -521,7 +520,7 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
             for (int j = currY; j <= currY + cur_radius; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //¡◊ßKrotate´·°Aweight_i&j¨∞≠tº∆´¨∫A
+                if (weight_i >= 0 && weight_j >= 0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -532,12 +531,12 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
                 }
             }
         }
-    } else if (cur_radius - pre_radius < 0) { //•bÆ|≈‹§p°A™Ì•‹æa™Ò
-        for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) { //-5+5•Œ®”√B•~πw¶Ù
-            for (int j = currY; j <= currY + cur_radius + 10; j--) {
+    } else if (cur_radius - pre_radius < 0) {
+        for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
+            for (int j = currY; j <= currY + cur_radius + 10; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //¡◊ßKrotate´·°Aweight_i&j¨∞≠tº∆´¨∫A
+                if (weight_i >= 0 && weight_j >= 0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -556,7 +555,7 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
             for (int j = currY; j >= currY - cur_radius; j--) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) { //¡◊ßKrotate´·°Aweight_i&j¨∞≠tº∆´¨∫A
+                if (weight_i >= 0 && weight_j >= 0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -910,12 +909,14 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
 
 
 
-void flightMove(double* currentX, double* currentY, double* preX, double* preY, int turnCases, int descision, double move_distance) {
+void flightMove(double* currentX, double* currentY, double* preX, double* preY, int turnCase, int descision, double move_distance) {
 
     *preX = *currentX;
     *preY = *currentY;
 
-    switch (abs(turnCases)) {
+    cout << turnCase << endl;
+
+    switch (abs(turnCase)) {
         case 1:
             if (descision == 0) {
                 *currentX += 0;
@@ -1013,7 +1014,7 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
             }
             break;
         default:
-            printf("Error");
+            cout << "flightMove Error" << endl;
     }
 
 }
