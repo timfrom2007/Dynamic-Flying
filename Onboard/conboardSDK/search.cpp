@@ -166,11 +166,11 @@ vector<PointData> planPath(CoreAPI *api){
 
     do{
         flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
-        cout << currX << " " << currY <<endl;
 
         r_matrix.clear();
         rotation_matrix(currX, currY, preX, preY, r_matrix);
         cout << "Flag:7" <<endl;
+
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
         cout << "Flag:8" <<endl;
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count, r_matrix);
