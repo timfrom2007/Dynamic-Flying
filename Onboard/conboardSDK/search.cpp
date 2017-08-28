@@ -99,7 +99,6 @@ void *collectRSSI(void *ptr)
 
 vector<PointData> planPath(CoreAPI *api){
 
-    cout << "1" <<endl;
 
     /////////////////////
     // extern variable //
@@ -116,17 +115,17 @@ vector<PointData> planPath(CoreAPI *api){
 
     // 生成一維指標陣列
     int i=0, j=0;
-    double **map_weight = new double*[400];
-    int **map_count = new int*[400];
+    double **map_weight = new double*[600];
+    int **map_count = new int*[600];
 
     // 每個指標陣列再生成整數陣列
-    for(i=0; i<400; i++){
-        map_count[i] = new int[800];
-        map_weight[i] = new double[800];
+    for(i=0; i<600; i++){
+        map_count[i] = new int[1000];
+        map_weight[i] = new double[1000];
     }
     // write
-    for(i=0; i<400; i++) {
-        for(j=0; j<800; j++){
+    for(i=0; i<600; i++) {
+        for(j=0; j<1000; j++){
             map_count[i][j] = 0;
             map_weight[i][j] = 0.0;
         }
@@ -135,7 +134,7 @@ vector<PointData> planPath(CoreAPI *api){
     // extern variable //
     /////////////////////
 
-    cout << "2" <<endl;
+
 
     double currX = 0.0, currY=0.0, preX=0.0, preY=0.0;  //X and Y, in XY coordinate system
     double currLat=0.0, currLon=0.0, preLat=0.0, preLon=0.0; //Latitude and Longitude, in Geographic coordinate system
@@ -143,19 +142,14 @@ vector<PointData> planPath(CoreAPI *api){
     vector<double> r_matrix;
 
     vector<PointData> record = goFind(api,"./preFlight.txt");  //main record
-
-    cout << "3" <<endl;
-
     vector<PointData> searchRecord = goFind(api,"./moveStraight.txt"); // each turn record
-
-    cout << "4" <<endl;
 
     currLat = searchRecord[searchRecord.size()-1].latitude;
     currLon = searchRecord[searchRecord.size()-1].longitude;
     preLat = record[record.size()-1].latitude;
     preLon = record[record.size()-1].longitude;
 
-    cout << "5" <<endl;
+    cout << "Flag:5" <<endl;
 
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
     double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
@@ -173,8 +167,9 @@ vector<PointData> planPath(CoreAPI *api){
 
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
         cout << "Flag:8" <<endl;
-        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase,cur_radius, pre_radius, map_weight, map_count, r_matrix);
-        cout << descision << endl;
+        descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase, cur_radius, pre_radius, map_weight, map_count, r_matrix);
+
+        cout << "Decision: " << descision << " TurnCase: " << turnCase <<endl;
 
         searchRecord.clear();
         if(descision==0){
@@ -439,14 +434,23 @@ void rotation_matrix(double currX, double currY, double preX, double preY, vecto
     int deltaY = currY - preY;
 
     if (deltaX != 0 && deltaY != 0) {
-        if (deltaX > 0 && deltaY > 0) { // °˘ ¢X
+        if (deltaX > 3 && deltaY > 3) { // 1
             degree = degree * 7;
-        } else if (deltaX > 0 && deltaY < 0) { // °˚ ¢X
+        } else if (deltaX > 3 && deltaY < -3) { // 2
             degree = degree * 5;
-        } else if (deltaX < 0 && deltaY > 0) { // °¯ ¢X
+        } else if (deltaX < -3 && deltaY > 3) { // 3
             degree = degree * 1;
-        } else if (deltaX < 0 && deltaY < 0) { // °˙ ¢X
+        } else if (deltaX < -3 && deltaY < -3) { // 4
             degree = degree * 3;
+
+        } else if (-3 <= deltaX <= 3 && deltaY > 3) { // 5
+            degree = degree * 0;
+        } else if (deltaX < -3 && -3 <= deltaY <= 3) { // 6
+            degree = degree * 2;
+        } else if (-3 <= deltaX <= 3 && deltaY < -3) { // 7
+            degree = degree * 4;
+        } else if (deltaX > 3 && -3 <= deltaY <= 3) { // 8
+            degree = degree * 6;
         }
     } else if (deltaX == 0 && deltaY != 0) {
         if (deltaY > 0) { // °Ù ¢X
@@ -579,9 +583,9 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
 
     double turn_matrix[3] = {0.0, 0.0, 0.0};
 
-    double slope;
-    double split_line1;
-    double split_line2;
+    double slope=0.0;
+    double split_line1=0.0;
+    double split_line2=0.0;
     if (currX - preX == 0) {
         slope = 0;
         split_line1 = (slope - tan( _PI_ / 3)) / (tan( _PI_ / 3) * slope + 1);
@@ -601,19 +605,19 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
     double constant2 = calConstant(currX, currY, split_line2);
 
 
-    if (currX - preX > 0 && currY - preY > 0) {
+    if (currX - preX > 3 && currY - preY > 3) {
         *turnCase = 1;
-    } else if (currX - preX < 0 && currY - preY > 0) {
+    } else if (currX - preX < -3 && currY - preY > 3) {
         *turnCase = 2;
-    } else if (currX - preX < 0 && currY - preY < 0) {
+    } else if (currX - preX < -3 && currY - preY < -3) {
         *turnCase = 3;
-    } else if (currX - preX > 0 && currY - preY < 0) {
+    } else if (currX - preX > 3 && currY - preY < -3) {
         *turnCase = 4;
-    } else if (currX - preX == 0 && currY - preY > 0) {
+    } else if (3 >= currX - preX >= -3 && 3 >= currY - preY >= -3) {
         *turnCase = 5;
     } else if (currX - preX < 0 && currY - preY == 0) {
         *turnCase = 6;
-    } else if (currX - preX == 0 && currY - preY < 0) {
+    } else if (3 >= currX - preX >= -3 && 3 >= currY - preY >= -3) {
         *turnCase = 7;
     } else if (currX - preX > 0 && currY - preY == 0) {
         *turnCase = 8;
@@ -629,46 +633,46 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
                             switch (*turnCase) {
                                 case 1:
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
+                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 >= weight_j) {
+                                    if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
 
                                 case 2:
-                                    if (weight_i * split_line2 + constant2 >= weight_j) {
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                    if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
 
                                 case 3:
-                                    if (weight_i * split_line2 + constant2 >= weight_j) {
+                                    if (weight_i * split_line1 + constant1 >= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
+                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                    if (weight_i * split_line2 + constant2 <= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
 
                                 case 4:
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
+                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     if (weight_i * split_line1 + constant1 >= weight_j) {
@@ -677,49 +681,49 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                                     break;
 
                                 case 5:
-                                    if (weight_i * split_line1 + constant1 >= weight_j) {
+                                    if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 < weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line2 + constant2 >= weight_j) {
+                                    if (weight_i * split_line1 + constant1 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
 
                                 case 6:
-                                    if (weight_i * split_line2 + constant2 >= weight_j) {
-                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 <= weight_j) {
-                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    break;
-
-                                case 7:
-                                    if (weight_i * split_line1 + constant1 <= weight_j) {
-                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
-                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    break;
-
-                                case 8:
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                    if (weight_i * split_line1 + constant1 >= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 >= weight_j) {
+                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    break;
+
+                                case 7:
+                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 > weight_j) {
+                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    break;
+
+                                case 8:
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
+                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
@@ -742,42 +746,18 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
                             switch (*turnCase) {
                                 case 1:
-                                    if (weight_i * split_line2 + constant2 >= weight_j) {
+                                    if (weight_i * split_line2 + constant2 <= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
+                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                    if (weight_i * split_line1 + constant1 >= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
 
                                 case 2:
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
-                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 >= weight_j) {
-                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    break;
-
-                                case 3:
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
-                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    if (weight_i * split_line1 + constant1 >= weight_j) {
-                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
-                                    }
-                                    break;
-
-                                case 4:
                                     if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
@@ -785,6 +765,30 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     if (weight_i * split_line1 + constant1 <= weight_j) {
+                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    break;
+
+                                case 3:
+                                    if (weight_i * split_line2 + constant2 >= weight_j) {
+                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
+                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                        turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    break;
+
+                                case 4:
+                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                        turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
+                                        turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    }
+                                    if (weight_i * split_line1 + constant1 >= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
@@ -802,13 +806,13 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                                     break;
 
                                 case 6:
-                                    if (weight_i * split_line2 + constant2 <= weight_j) {
+                                    if (weight_i * split_line2 + constant2 >= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
+                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 >= weight_j) {
+                                    if (weight_i * split_line1 + constant1 <= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
@@ -826,13 +830,13 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
                                     break;
 
                                 case 8:
-                                    if (weight_i * split_line2 + constant2 >= weight_j) {
+                                    if (weight_i * split_line2 + constant2 <= weight_j) {
                                         turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
+                                    if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
                                         turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
-                                    if (weight_i * split_line1 + constant1 <= weight_j) {
+                                    if (weight_i * split_line1 + constant1 >= weight_j) {
                                         turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
                                     }
                                     break;
@@ -914,7 +918,8 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
     *preX = *currentX;
     *preY = *currentY;
 
-    cout << turnCase << endl;
+    cout << "FlightMove TurnCase:" << turnCase << endl;
+    cout << "Previous X,Y:" << *preX << " " << *preY  <<endl;
 
     switch (abs(turnCase)) {
         case 1:
