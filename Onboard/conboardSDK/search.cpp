@@ -152,8 +152,10 @@ vector<PointData> planPath(CoreAPI *api){
     cout << "Flag:5" <<endl;
 
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
-    double cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
+    double cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+
+    record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
 
     cout << "Flag:6" <<endl;
@@ -182,15 +184,18 @@ vector<PointData> planPath(CoreAPI *api){
             searchRecord = goFind(api,"./moveRight.txt");
         }
 
-        record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
-        currLat = record[searchRecord.size()-1].latitude;
-        currLon = record[searchRecord.size()-1].longitude;
+
+        currLat = searchRecord[searchRecord.size()-1].latitude;
+        currLon = searchRecord[searchRecord.size()-1].longitude;
         preLat = record[record.size()-1].latitude;
         preLon = record[record.size()-1].longitude;
 
         moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000;
-        cur_radius = rssiToDist(record[searchRecord.size()-1].RSSI, record[searchRecord.size()-1].altitude);
+        cout << "moveDistance: " << moveDistance << endl;
+
+        cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+        record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
     }while(cur_radius>20);
 
@@ -475,6 +480,7 @@ void rotation_matrix(double currX, double currY, double preX, double preY, vecto
 }
 
 double moveDistance_to_speed(double move_distance){
+
     double speed;
     if(move_distance>=5){
 	speed = 5;
@@ -495,18 +501,16 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
 
     int weight_i=0;
     int weight_j=0;
-    currX = floor(currX);
-    currY = floor(currY);
-    cur_radius = floor(cur_radius);
-    pre_radius = floor(pre_radius);
-    cout << currX<<" "<<currY <<endl;
-    cout << cur_radius << " "  << pre_radius << endl;
+
+    cout << "PreX:" << preX << " PreY:" << preY  <<endl;
+    cout << "CurrX: " << currX<< " CurrY:"<<currY <<endl;
+    cout << "Cur R:" << cur_radius << " Pre R:" << pre_radius << endl;
     if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j >= currY - cur_radius + 10; j--) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) {
+                if ( 1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0 ) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -524,7 +528,7 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
             for (int j = currY; j <= currY + cur_radius; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) {
+                if (1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -540,7 +544,7 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
             for (int j = currY; j <= currY + cur_radius + 10; j++) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) {
+                if (1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -559,7 +563,7 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
             for (int j = currY; j >= currY - cur_radius; j--) {
                 weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
                 weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) {
+                if (1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -919,7 +923,6 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
     *preY = *currentY;
 
     cout << "FlightMove TurnCase:" << turnCase << endl;
-    cout << "Previous X,Y:" << *preX << " " << *preY  <<endl;
 
     switch (abs(turnCase)) {
         case 1:
