@@ -47,6 +47,7 @@ int main(int argc, char *argv[])
     printf("lat:%lf\n",latitude(flight));
     printf("lon:%lf\n",longitude(flight));
 
+
     //double a,b;
     //cin>>a>>b;
     //cout<<getFakeRSSI(flight,a,b,0);

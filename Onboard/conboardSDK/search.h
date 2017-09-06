@@ -42,6 +42,7 @@ double median_filter(int* rssi);
 double latitude(const Flight* flight);
 double longitude(const Flight* flight);
 double altitude(const Flight* flight);
+double getYaw(const Flight* flight);
 void control(VirtualRC *vrc ,int pitch,int roll);
 //PointData calculatePos(vector<PointData> *record); //Pure RSSI
 //PointData calculatePos2(vector<PointData> *record); //Differential RSSI
@@ -55,7 +56,7 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
 double rssiToDist(double rssi, double altitude);
 vector<PointData> planPath(CoreAPI *api); //Planning Path
 double normalDistribution();
-void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix);
+void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw);
 double moveDistance_to_speed(double move_distance);
 double distance(int x1, int y1, int x2, int y2);
 void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix);

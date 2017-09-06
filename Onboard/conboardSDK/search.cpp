@@ -12,6 +12,11 @@ double altitude(const Flight *flight)
 {
     return flight->getPosition().altitude;
 }
+double getYaw(const Flight *flight){
+    QuaternionData q = flight->getQuaternion();
+    float yaw=atan2(2.0 * (q.q3 * q.q0 + q.q1 * q.q2) , - 1.0 + 2.0 * (q.q0 * q.q0 + q.q1 * q.q1));
+    return yaw;
+}
 void control(VirtualRC *vrc ,int pitch,int yaw)
 {
     VirtualRCData vdata;
@@ -50,7 +55,7 @@ void *collectRSSI(void *ptr)
         p.latitude = latitude(params->flight);
         p.longitude = longitude(params->flight);
         p.altitude = altitude(params->flight);
-        p.RSSI = getFakeRSSI(params->flight,0.393462,1.988988,0, p.startSearch);
+        p.RSSI = getFakeRSSI(params->flight,0.393448,1.988984,0, p.startSearch);
 
         struct filtering_result{
             float median;
@@ -120,12 +125,12 @@ vector<PointData> planPath(CoreAPI *api){
 
     // 每個指標陣列再生成整數陣列
     for(i=0; i<600; i++){
-        map_count[i] = new int[1000];
-        map_weight[i] = new double[1000];
+        map_count[i] = new int[1200];
+        map_weight[i] = new double[1200];
     }
     // write
     for(i=0; i<600; i++) {
-        for(j=0; j<1000; j++){
+        for(j=0; j<1200; j++){
             map_count[i][j] = 0;
             map_weight[i][j] = 0.0;
         }
@@ -135,7 +140,8 @@ vector<PointData> planPath(CoreAPI *api){
     /////////////////////
 
 
-
+    const Flight *flight = new Flight(api);
+    double curYaw = 0.0;
     double currX = 0.0, currY=0.0, preX=0.0, preY=0.0;  //X and Y, in XY coordinate system
     double currLat=0.0, currLon=0.0, preLat=0.0, preLon=0.0; //Latitude and Longitude, in Geographic coordinate system
     double guessX=0.0, guessY=0.0, guessLon=0.0, guessLat=0.0;  //guess Target position, need to transform
@@ -164,7 +170,8 @@ vector<PointData> planPath(CoreAPI *api){
         flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
 
         r_matrix.clear();
-        rotation_matrix(currX, currY, preX, preY, r_matrix);
+        curYaw = getYaw(flight);
+        rotation_matrix(currX, currY, preX, preY, r_matrix, curYaw);
         cout << "Flag:7" <<endl;
 
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
@@ -196,6 +203,7 @@ vector<PointData> planPath(CoreAPI *api){
         cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
         record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
+        cout << "Record Size:" << record.size() << " sRecord Size:" << searchRecord.size() <<endl;
 
     }while(cur_radius>20);
 
@@ -222,6 +230,7 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile)
 
     VirtualRC vrc(api);
     vrc.setControl(true,VirtualRC::CutOff::CutOff_ToRealRC);
+
 
     FILE * fp = fopen(pathFile,"r");
     int pitch=0, roll=0, yaw=0;
@@ -432,51 +441,58 @@ Dynamic Path Planning Function
 */
 
 
-void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix){
+void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw){
 
-    double degree = _PI_ / 4; // £k/4 = 45¢X
+    curYaw = curYaw * -1;
+    if(curYaw<0){
+        curYaw = _PI_ - curYaw;
+    }
+
+
+    /*
+    double degree = _PI_ / 4;
     int deltaX = currX - preX;
     int deltaY = currY - preY;
 
     if (deltaX != 0 && deltaY != 0) {
-        if (deltaX > 3 && deltaY > 3) { // 1
+        if (deltaX > 5 && deltaY > 5) {
             degree = degree * 7;
-        } else if (deltaX > 3 && deltaY < -3) { // 2
+        } else if (deltaX > 5 && deltaY < -5) {
             degree = degree * 5;
-        } else if (deltaX < -3 && deltaY > 3) { // 3
+        } else if (deltaX < -5 && deltaY > 5) {
             degree = degree * 1;
-        } else if (deltaX < -3 && deltaY < -3) { // 4
+        } else if (deltaX < -5 && deltaY < -5) {
             degree = degree * 3;
 
-        } else if (-3 <= deltaX <= 3 && deltaY > 3) { // 5
+        } else if (-5 <= deltaX <= 5 && deltaY > 5) {
             degree = degree * 0;
-        } else if (deltaX < -3 && -3 <= deltaY <= 3) { // 6
+        } else if (deltaX < -5 && -5 <= deltaY <= 5) {
             degree = degree * 2;
-        } else if (-3 <= deltaX <= 3 && deltaY < -3) { // 7
+        } else if (-5 <= deltaX <= 5 && deltaY < -5) {
             degree = degree * 4;
-        } else if (deltaX > 3 && -3 <= deltaY <= 3) { // 8
+        } else if (deltaX > 5 && -5 <= deltaY <= 5) {
             degree = degree * 6;
         }
     } else if (deltaX == 0 && deltaY != 0) {
-        if (deltaY > 0) { // °Ù ¢X
+        if (deltaY > 0) {
             degree = degree * 0;
-        } else if (deltaY < 0) { // °ı ¢X
+        } else if (deltaY < 0) {
             degree = degree * 4;
         }
 
     } else if (deltaX != 0 && deltaY == 0) {
-        if (deltaX > 0) { // °˜ ¢X
+        if (deltaX > 0) {
             degree = degree * 6;
-        } else if (deltaX < 0) { // °ˆ ¢X
+        } else if (deltaX < 0) {
             degree = degree * 2;
         }
     }
+    */
 
-
-    r_matrix.push_back(cos(degree));
-    r_matrix.push_back(sin(degree));
-    r_matrix.push_back(-sin(degree));
-    r_matrix.push_back(cos(degree));
+    r_matrix.push_back(cos(curYaw));
+    r_matrix.push_back(sin(curYaw));
+    r_matrix.push_back(-sin(curYaw));
+    r_matrix.push_back(cos(curYaw));
 }
 
 double moveDistance_to_speed(double move_distance){
@@ -508,9 +524,9 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
     if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j >= currY - cur_radius + 10; j--) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if ( 1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0 ) {
+                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
+                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                if ( 1200>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0 ) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -526,9 +542,9 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
                 }
             }
             for (int j = currY; j <= currY + cur_radius; j++) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
+                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
+                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                if (1200>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -542,9 +558,9 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
     } else if (cur_radius - pre_radius < 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j <= currY + cur_radius + 10; j++) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
+                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
+                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                if (1200>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -561,9 +577,9 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
                 }
             }
             for (int j = currY; j >= currY - cur_radius; j--) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (1000>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
+                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
+                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                if (1200>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
                         if (cur_radius >= dist) {
@@ -590,6 +606,9 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
     double slope=0.0;
     double split_line1=0.0;
     double split_line2=0.0;
+
+
+
     if (currX - preX == 0) {
         slope = 0;
         split_line1 = (slope - tan( _PI_ / 3)) / (tan( _PI_ / 3) * slope + 1);
@@ -608,31 +627,42 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
     double constant1 = calConstant(currX, currY, split_line1);
     double constant2 = calConstant(currX, currY, split_line2);
 
+        cout << "turn Flag:1" << endl;
 
-    if (currX - preX > 3 && currY - preY > 3) {
+    int deltaX = currX - preX;
+    int deltaY = currY - preY;
+
+    cout << "deltaX:" << deltaX << " ,deltaY:" << deltaY <<endl;
+
+    if (deltaX > 5 && deltaY > 5) {
         *turnCase = 1;
-    } else if (currX - preX < -3 && currY - preY > 3) {
+    } else if (deltaX < -5 && deltaY > 5) {
         *turnCase = 2;
-    } else if (currX - preX < -3 && currY - preY < -3) {
+    } else if (deltaX < -5 && deltaY < -5) {
         *turnCase = 3;
-    } else if (currX - preX > 3 && currY - preY < -3) {
+    } else if (deltaX > 5 && deltaY < -5) {
         *turnCase = 4;
-    } else if (3 >= currX - preX >= -3 && 3 >= currY - preY >= -3) {
+    } else if (5 >= deltaX >= -5 && deltaY >= 5) {
         *turnCase = 5;
-    } else if (currX - preX < 0 && currY - preY == 0) {
+    } else if (deltaX < -5 && -5 <= deltaY <= 5) {
         *turnCase = 6;
-    } else if (3 >= currX - preX >= -3 && 3 >= currY - preY >= -3) {
+    } else if (-5 <= deltaX <= 5 && deltaY < -5) {
         *turnCase = 7;
-    } else if (currX - preX > 0 && currY - preY == 0) {
+    } else if (deltaX > 5 && -5 <= deltaY <= 5) {
         *turnCase = 8;
     }
+
+    int weight_i=0;
+    int weight_j=0;
+
+        cout << "turn Flag:2" << endl;
 
     if (cur_radius - pre_radius <= 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j <= currY + cur_radius + 10; j++) {
-                int weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
-                int weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) {
+                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
+                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                if (1200>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] > 0) {
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
                             switch (*turnCase) {
@@ -743,9 +773,9 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
     } else if (cur_radius - pre_radius > 0) {
         for (int i = currX - cur_radius - 10; i <= currX + cur_radius + 10; i++) {
             for (int j = currY; j >= currY - cur_radius - 10; j--) {
-                int weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + currX;
-                int weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + currY;
-                if (weight_i >= 0 && weight_j >= 0) {
+                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
+                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                if (1200>weight_i && weight_i>=0 && 600>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] > 0) {
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
                             switch (*turnCase) {
@@ -855,6 +885,8 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
         }
     }
 
+        cout << "turn Flag:3" << endl;
+
 
     srand(time(NULL));
     if (cur_radius < pre_radius) {
@@ -917,12 +949,14 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
 
 
 
-void flightMove(double* currentX, double* currentY, double* preX, double* preY, int turnCase, int descision, double move_distance) {
+void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, vector<double> r_matrix) {
 
     *preX = *currentX;
     *preY = *currentY;
 
-    cout << "FlightMove TurnCase:" << turnCase << endl;
+
+
+
 
     switch (abs(turnCase)) {
         case 1:
@@ -939,10 +973,10 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
             break;
         case 2:
             if (descision == 0) {
-                *currentX += -move_distance;
+                *currentX -= move_distance;
                 *currentY += 0;
             } else if (descision == 1) {
-                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
                 *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
             } else if (descision == 2) {
                 *currentX += 0;
@@ -952,12 +986,12 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
         case 3:
             if (descision == 0) {
                 *currentX += 0;
-                *currentY += -move_distance;
+                *currentY -= move_distance;
             } else if (descision == 1) {
-                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
             } else if (descision == 2) {
-                *currentX += -move_distance;
+                *currentX -= move_distance;
                 *currentY += 0;
             }
             break;
@@ -967,7 +1001,7 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
                 *currentY += 0;
             } else if (descision == 1) {
                 *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
             } else if (descision == 2) {
                 *currentX += 0;
                 *currentY += -move_distance;
@@ -975,7 +1009,7 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
             break;
         case 5:
             if (descision == 0) {
-                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
                 *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
             } else if (descision == 1) {
                 *currentX += 0;
@@ -987,26 +1021,26 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
             break;
         case 6:
             if (descision == 0) {
-                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
             } else if (descision == 1) {
-                *currentX += -move_distance;
+                *currentX -= move_distance;
                 *currentY += 0;
             } else if (descision == 2) {
-                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
                 *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
             }
             break;
         case 7:
             if (descision == 0) {
                 *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
             } else if (descision == 1) {
                 *currentX += 0;
-                *currentY += -move_distance;
+                *currentY -= move_distance;
             } else if (descision == 2) {
-                *currentX += -pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
             }
             break;
         case 8:
@@ -1018,7 +1052,7 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
                 *currentY += 0;
             } else if (descision == 2) {
                 *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += -pow((pow(move_distance, 2)) / 2, 0.5);
+                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
             }
             break;
         default:
