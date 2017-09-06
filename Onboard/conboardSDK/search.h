@@ -65,5 +65,6 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
 void nextWayPoint(WayPoint waypoint, double lat, double lon);
 void initWayPoint(WayPoint waypoint);
 //double coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, vector<PointData> *preRecord, vector<PointData> *curRecord);
-void flightMove(double* currentX, double* currentY, double* preX, double* preY, int turnCase, int descision, double move_distance);
+void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, double curYaw);
 double median_filter(int* rssi);
+void predictPos(double** map_weight, int** map_count);

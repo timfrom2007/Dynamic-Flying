@@ -1,5 +1,5 @@
 #include "search.h"
-
+#define _PI_ 3.14159265358979323846
 double latitude(const Flight *flight)
 {
     return flight->getPosition().latitude;
@@ -155,22 +155,23 @@ vector<PointData> planPath(CoreAPI *api){
     preLat = record[record.size()-1].latitude;
     preLon = record[record.size()-1].longitude;
 
-    cout << "Flag:5" <<endl;
-
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
     double cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
 
     record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
-
-    cout << "Flag:6" <<endl;
-
     do{
-        flightMove(&currX, &currY, &preX, &preY, turnCase, descision, moveDistance);
+        curYaw = getYaw(flight);
+        curYaw = curYaw * -1;
+        if(curYaw<0){
+            curYaw = 2*_PI_ + curYaw;
+        }
+
+        flightMove(&currX, &currY, &preX, &preY, descision, moveDistance, curYaw);
 
         r_matrix.clear();
-        curYaw = getYaw(flight);
+
         rotation_matrix(currX, currY, preX, preY, r_matrix, curYaw);
         cout << "Flag:7" <<endl;
 
@@ -204,6 +205,8 @@ vector<PointData> planPath(CoreAPI *api){
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
         record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
         cout << "Record Size:" << record.size() << " sRecord Size:" << searchRecord.size() <<endl;
+        predictPos(map_weight, map_count);
+        cout<< "------------------------------------\n" <<endl;
 
     }while(cur_radius>20);
 
@@ -248,7 +251,6 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile)
     fscanf(fp,"%d %d",&pitch,&yaw);
 
     do{
-    	cout << "pitch:" << pitch << "  yaw:" << yaw <<endl;
     	control(&vrc,pitch,yaw);
     	usleep(100 * 1000);
     	fscanf(fp,"%d %d",&pitch,&yaw);
@@ -258,6 +260,7 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile)
     params.isFlying = false;
     pthread_join(collectThr,NULL);
     cout<< "Record point: " << record.size() <<endl;
+
 
     return record;
 }
@@ -281,7 +284,7 @@ double getFakeRSSI(const Flight *flight,double la,double lo,double al, int start
 
 
 
-#define _PI_ 3.14159265358979323846
+
 double deg2rad(double deg) {
   return (deg * _PI_ / 180);
 }
@@ -442,12 +445,6 @@ Dynamic Path Planning Function
 
 
 void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw){
-
-    curYaw = curYaw * -1;
-    if(curYaw<0){
-        curYaw = _PI_ - curYaw;
-    }
-
 
     /*
     double degree = _PI_ / 4;
@@ -949,15 +946,15 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
 
 
 
-void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, vector<double> r_matrix) {
+void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, double curYaw) {
 
     *preX = *currentX;
     *preY = *currentY;
 
 
-
-
-
+    *currentX -= move_distance*sin(curYaw);
+    *currentY += move_distance*cos(curYaw);
+    /*
     switch (abs(turnCase)) {
         case 1:
             if (descision == 0) {
@@ -1058,6 +1055,7 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
         default:
             cout << "flightMove Error" << endl;
     }
+    */
 
 }
 
@@ -1072,5 +1070,39 @@ double median_filter(int* rssi)
         result = rssi[mid+1];
     }
     return result;
+}
+
+void predictPos(double** map_weight, int** map_count)
+{
+     double large[4] = {0.0, 0.0, 0.0, 0.0};
+
+     int i=0, j=0;
+     for(i=0; i<600; i++) {
+        for(j=0; j<1200; j++){
+            if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
+                if (map_weight[i][j] / map_count[i][j] > large[0]) {
+                    large[0] = map_weight[i][j] / map_count[i][j];
+                }
+            }
+        }
+    }
+
+    for (i = 0; i < 600; i++) {
+        for (j = 0; j < 1200; j++) {
+            if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
+                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {
+                    large[1] += i;
+                    large[2] += j;
+                    large[3] += 1;
+                }
+            }
+        }
+    }
+
+    large[1] = large[1] / large[3];
+    large[2] = large[2] / large[3];
+
+    cout << "X:" << large[1] << " Y:" << large[2] << " Count:" << large[3] << endl;
+
 }
 
