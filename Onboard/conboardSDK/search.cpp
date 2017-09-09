@@ -1115,6 +1115,7 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt)
         }
     }
 
+    double dist = 0.0;
     for (i = 0; i < 600; i++) {
         for (j = 0; j < 1200; j++) {
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
@@ -1122,6 +1123,7 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt)
                     large[1] += i;
                     large[2] += j;
                     large[3] += 1;
+
                 }
             }
         }
@@ -1133,4 +1135,3 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt)
     cout << "X:" << *Xt << " Y:" << *Yt << " Count:" << large[3] << endl;
 
 }
-
