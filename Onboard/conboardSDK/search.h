@@ -67,4 +67,4 @@ void initWayPoint(WayPoint waypoint);
 void coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, double currLat, double currLon, double preLat, double preLon);
 void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, double curYaw);
 double median_filter(int* rssi);
-void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt);
+void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, double currR, double currX, double currY);

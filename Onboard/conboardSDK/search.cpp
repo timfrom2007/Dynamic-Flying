@@ -184,9 +184,7 @@ vector<PointData> planPath(CoreAPI *api){
 
         flightMove(&currX, &currY, &preX, &preY, descision, moveDistance, curYaw);
 
-        Xa=currX;  Ya=currY;  Xb=preX; Yb=preY;
-        coordinateChanger(Xt, Yt, Xa, Ya, Xb, Yb, currLat, currLon, preLat, preLon);
-
+        
         r_matrix.clear();
 
         rotation_matrix(currX, currY, preX, preY, r_matrix, curYaw);
@@ -195,9 +193,18 @@ vector<PointData> planPath(CoreAPI *api){
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix);
         cout << "Flag:8" <<endl;
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase, cur_radius, pre_radius, map_weight, map_count, r_matrix);
+        
+        Xa=currX;  Ya=currY;  Xb=preX; Yb=preY;
+        predictPos(map_weight, map_count, &Xt, &Yt, cur_radius, currX, currY);
+        coordinateChanger(Xt, Yt, Xa, Ya, Xb, Yb, currLat, currLon, preLat, preLon);
+        cout<< "------------------------------------\n" <<endl;
 
         cout << "Decision: " << descision << " TurnCase: " << turnCase <<endl;
 
+        
+        ////////////////////////////////
+        ///// Next Round of Flight /////
+        ////////////////////////////////
         searchRecord.clear();
         if(descision==0){
             searchRecord = goFind(api,"./moveLeft.txt");
@@ -223,9 +230,9 @@ vector<PointData> planPath(CoreAPI *api){
         record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
         cout << "Record Size:" << record.size() << " sRecord Size:" << searchRecord.size() <<endl;
-        predictPos(map_weight, map_count, &Xt, &Yt);
+        
 
-        cout<< "------------------------------------\n" <<endl;
+        
 
     }while(cur_radius>20);
 
@@ -1100,9 +1107,10 @@ double median_filter(int* rssi)
     return result;
 }
 
-void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt)
+void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, double currR, double currX, double currY)  //predict positon in XY coordination
 {
-     double large[4] = {0.0, 0.0, 0.0, 0.0};
+    double large[4] = {0.0, 0.0, 0.0, 0.0};
+    double predictDistance = 0.0, distError = 0.0, treshold = 100.0;
 
      int i=0, j=0;
      for(i=0; i<600; i++) {
@@ -1120,18 +1128,29 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt)
         for (j = 0; j < 1200; j++) {
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
                 if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {
+                    
+                    /*
                     large[1] += i;
                     large[2] += j;
                     large[3] += 1;
-
+                    */
+                    
+                    predictDistance = distance(i, j, currX, currY);
+                    distError = abs(predictDistance-currR);
+                    if(distError<=treshold){
+                        *Xt = i;
+                        *Yt = j;
+                        treshold = distError;
+                    }
+                    
                 }
             }
         }
     }
-
+    /*
     *Xt = large[1] / large[3];
     *Yt = large[2] / large[3];
-
+    */
     cout << "X:" << *Xt << " Y:" << *Yt << " Count:" << large[3] << endl;
 
 }
