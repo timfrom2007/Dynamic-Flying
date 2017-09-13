@@ -27,7 +27,7 @@ for line in f:
     
 ax.plot(lat, long, lw=2, label='UAV Path')    
 plt.plot([0.393446],[1.988958],'o', label='UAV')  #出發點
-plt.plot([0.393460],[1.988941],'o', label='TARGET')  #Target
+plt.plot([0.393452],[1.988934],'o', label='TARGET')  #Target
 
 
 
