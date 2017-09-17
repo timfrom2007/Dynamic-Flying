@@ -18,10 +18,10 @@ int main (){
     
 
   double theta, dist;
-  double lon1 = 1.988959; //1.988964
-  double lon2 = 1.988934;
+  double lon1 = 1.988958; //1.988964
+  double lon2 = 1.988961;
   double lat1 = 0.393446; //0.393454, 0.393438 - 0.393470
-  double lat2 = 0.393448;
+  double lat2 = 0.393468;
 
   theta = lon1 - lon2;
   dist = sin(lat1) * sin(lat2) + cos(lat1) * cos(lat2) * cos(theta);

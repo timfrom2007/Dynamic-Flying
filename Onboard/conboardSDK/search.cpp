@@ -55,7 +55,7 @@ void *collectRSSI(void *ptr)
         p.latitude = latitude(params->flight);
         p.longitude = longitude(params->flight);
         p.altitude = altitude(params->flight);
-        p.RSSI = getFakeRSSI(params->flight,0.393452,1.988934,0, p.startSearch);
+        p.RSSI = getFakeRSSI(params->flight,0.393468,1.988961, 0, p.startSearch);
 
         struct filtering_result{
             float median;
@@ -120,10 +120,10 @@ vector<PointData> planPath(CoreAPI *api){
 
     const Flight *flight = new Flight(api);
     double curYaw = 0.0;
-    double currX = 600.0, currY=0.0, preX=0.0, preY=0.0;  //X and Y, in XY coordinate system
+    double currX = 0.0, currY=0.0, preX=0.0, preY=0.0;  //X and Y, in XY coordinate system
     double currLat=0.0, currLon=0.0, preLat=0.0, preLon=0.0; //Latitude and Longitude, in Geographic coordinate system
-    double guessX=0.0, guessY=0.0, guessLon=0.0, guessLat=0.0;  //guess Target position, need to transform
-    double Xa=0.0, Ya=0.0, Xb=0.0, Yb=0.0, Xt=0.0, Yt=0.0; //For CoordinateChanger
+    double guessLon=0.0, guessLat=0.0;  //guess Target position, need to transform
+    double Xa=0.0, Ya=0.0, Xb=0.0, Yb=0.0, Xt=0.0, Yt=0.0, LatA=0.0, LonA=0.0, LatB=0.0, LonB=0.0; //For CoordinateChanger
     vector<double> r_matrix;
 
     // Start Searching
@@ -136,13 +136,15 @@ vector<PointData> planPath(CoreAPI *api){
     preLon = record[record.size()-1].longitude;
 
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
+    cout << "moveDistance: " << moveDistance << endl;
     double cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+    cout << "CurR: " << cur_radius << ", PreR: " << pre_radius <<endl;
 
-    /////////////////////
+    currX = pre_radius;
+    Xa=pre_radius;  Ya=0.0; LatA=preLat; LonA=preLon;
+
     // 2D Array malloc //
-    /////////////////////
-
     int height = floor(pre_radius+20);
     int width = height*2;
 
@@ -164,12 +166,32 @@ vector<PointData> planPath(CoreAPI *api){
             map_weight[i][j] = 0.0;
         }
     }
+
+
     /////////////////////
     // extern variable //
     /////////////////////
 
+    //Add First Weight//
+    double d=0.0;
+    for(i=0; i<height; i++) {
+        for(j=0; j<width; j++){
+            d = distance(i, j, currX, currY);
+            if (cur_radius >= d) {
+                if (d <= cur_radius) {
+                    map_weight[i][j] += d / pow((cur_radius), 2);
+                    map_count[i][j] += 1;
+                } else {
+                    map_weight[i][j] += (cur_radius * 2 - d) / pow((cur_radius), 2);
+                    map_count[i][j] += 1;
+                }
+            }
+        }
+    }
+
     record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
+    //Start Dynamic Path Planning
     do{
         count+=1;
         if(count==30){
@@ -189,20 +211,17 @@ vector<PointData> planPath(CoreAPI *api){
         }
 
         flightMove(&currX, &currY, &preX, &preY, descision, moveDistance, curYaw);
-
-
+        cout << "CurrLat:" << currLat << " CurrLon:" << currLon << ", PreLat:" << preLat << " PreLon:" << preLon << endl;
+        cout << "CurrX:" << currX << " CurrY:" << currY << ", PreX:" << preX << " PreY:" << preY << endl;
         r_matrix.clear();
 
         rotation_matrix(currX, currY, preX, preY, r_matrix, curYaw);
-        cout << "Flag:7" <<endl;
-
         addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
-        cout << "Flag:8" <<endl;
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
 
-        Xa=currX;  Ya=currY;  Xb=preX; Yb=preY;
-        predictPos(map_weight, map_count, &Xt, &Yt, cur_radius, currX, currY, height);
-        coordinateChanger(Xt, Yt, Xa, Ya, Xb, Yb, currLat, currLon, preLat, preLon, height);
+        Xb=preX; Yb=preY; LatB=preLat; LonB=preLon;
+        predictPos(map_weight, map_count, &Xt, &Yt, cur_radius, currX, currY, height);  //得出最高權重的(X,Y)點
+        coordinateChanger(Xt, Yt, Xa, Ya, Xb, Yb, LatA, LonA, LatB, LatB, height);
         cout<< "------------------------------------\n" <<endl;
 
         cout << "Decision: " << descision << " TurnCase: " << turnCase <<endl;
@@ -212,6 +231,9 @@ vector<PointData> planPath(CoreAPI *api){
         ///// Next Round of Flight /////
         ////////////////////////////////
         distPercent = cur_radius/height;
+        if(distPercent>1.0){
+            distPercent = 1.0;
+        }
 
         searchRecord.clear();
         if(descision==0){
@@ -235,14 +257,12 @@ vector<PointData> planPath(CoreAPI *api){
 
         cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+        cout << "CurR: " << cur_radius << ", PreR: " << pre_radius <<endl;
         record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
         cout << "Record Size:" << record.size() << " sRecord Size:" << searchRecord.size() <<endl;
 
-
-
-
-    }while(cur_radius>5);
+    }while(cur_radius>10);
 
 
     return record;
@@ -271,7 +291,7 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile, double distPercent)
     fscanf(fp,"%d %d",&pitch,&yaw);
 
     do{
-    	control(&vrc, pitch*distPercent*2, yaw);
+    	control(&vrc, pitch*distPercent, yaw);
     	usleep(100 * 1000);
     	fscanf(fp,"%d %d",&pitch,&yaw);
 
@@ -323,7 +343,7 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
   return (dist);
 }
 
-void coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, double currLat, double currLon, double preLat, double preLon, int height){  //XY coordinate to Lon,Lat coordinate
+void coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, double LatA, double LonA, double LatB, double LonB, int height){  //XY coordinate to Lon,Lat coordinate
 	/*  we solve the linear system
      *  ax+by=e  lonA*lon + latA*lat = xt*xa + yt*ya
      *  cx+dy=f  lonB*lon + latB*lat = xt*xb + yt*yb
@@ -332,13 +352,15 @@ void coordinateChanger(double xt, double yt, double xa, double ya, double xb, do
      * ax+by=e
      * cx+dy=f
      */
+
+
     xt -=height;
     xa -=height;
     xb -=height;
-    double a = currLon-1.988958;
-	double b = currLat-0.393446;
-	double c = preLon-1.988958;
-	double d = preLat-0.393446;
+    double a = LonA-1.988958;
+	double b = LatA-0.393446;
+	double c = LonB-1.988958;
+	double d = LatB-0.393446;
 	double e = xt*xa + yt*ya;
 	double f = xt*xb + yt*yb;
 
@@ -346,16 +368,20 @@ void coordinateChanger(double xt, double yt, double xa, double ya, double xb, do
 
 	double determinant = a*d - b*c;
 
-	cout << "a:" << a << " b:" << b << " c:" << c << " d:" << d << " e:" << e << " f:" << f << " deter:" << determinant <<endl;
+	//cout << "a:" << a << " b:" << b << " c:" << c << " d:" << d << " e:" << e << " f:" << f << " deter:" << determinant <<endl;
 
     if(determinant != 0) {
-        tarLong = (e*d - b*f)/determinant;
-        tarLat = (a*f - e*c)/determinant;
+        tarLong = ((e*d - b*f)/determinant) + 1.988958;
+        tarLat = (a*f - e*c)/determinant + 0.393446;
     } else {
         printf("Cramer equations system: determinant is zero\n");
     }
 
 	cout << "predictLong:" <<tarLong << " predictLat:" << tarLat <<endl;
+
+
+
+
 }
 /*
 PointData calculatePos(vector<PointData> *record) //Pure RSSI
@@ -544,9 +570,7 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
     int weight_i=0;
     int weight_j=0;
 
-    cout << "PreX:" << preX << " PreY:" << preY  <<endl;
-    cout << "CurrX: " << currX<< " CurrY:"<<currY <<endl;
-    cout << "Cur R:" << cur_radius << " Pre R:" << pre_radius << endl;
+
     if (cur_radius - pre_radius > 0) {  //飛機遠離目標
         for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++) {
             for (int j = currY; j >= currY - cur_radius + 5; j--) {
@@ -1107,6 +1131,8 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, do
     double predictDistance = 0.0, distError = 0.0, treshold = 100.0;
 
      int i=0, j=0;
+
+     //找到目前最大的權重
      for(i=0; i<height; i++) {
         for(j=0; j<(height*2); j++){
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
@@ -1117,10 +1143,11 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, do
         }
     }
 
+    //
     for (i=0; i<height; i++) {
         for (j=0; j<(height*2); j++) {
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {
+                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {  //*0.9是避免RSSI誤差
 
                     /*
                     large[1] += i;
@@ -1130,7 +1157,6 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, do
 
                     large[3] += 1;
                     predictDistance = distance(i, j, currX, currY);
-                    cout << "predictDistance:" << predictDistance << endl;
                     distError = abs(predictDistance-currR);
                     if(distError<=treshold){
                         *Xt = i;
@@ -1148,4 +1174,35 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, do
     */
     cout << "X:" << *Xt << " Y:" << *Yt << " Count:" << large[3] << endl;
 
+}
+
+void leastSquare(double xt, double yt, double xa, double ya, double xb, double yb, double LatA, double LonA, double LatB, double LonB)
+{
+    int i,j,k,n=3;
+    cout<<"\nEnter the no. of data pairs to be entered:\n";        //To find the size of arrays
+    double x[n],y[n],a,b;
+    cout<<"\nEnter the x-axis values:\n";                //Input x-values
+    for (i=0;i<n;i++)
+        cin>>x[i];
+    cout<<"\nEnter the y-axis values:\n";                //Input y-values
+    for (i=0;i<n;i++)
+        cin>>y[i];
+    double xsum=0,x2sum=0,ysum=0,xysum=0;                //variables for sums/sigma of xi,yi,xi^2,xiyi etc
+    for (i=0;i<n;i++)
+    {
+        xsum=xsum+x[i];                        //calculate sigma(xi)
+        ysum=ysum+y[i];                        //calculate sigma(yi)
+        x2sum=x2sum+pow(x[i],2);                //calculate sigma(x^2i)
+        xysum=xysum+x[i]*y[i];                    //calculate sigma(xi*yi)
+    }
+    a=(n*xysum-xsum*ysum)/(n*x2sum-xsum*xsum);            //calculate slope
+    b=(x2sum*ysum-xsum*xysum)/(x2sum*n-xsum*xsum);            //calculate intercept
+    double y_fit[n];                        //an array to store the new fitted values of y
+    for (i=0;i<n;i++)
+        y_fit[i]=a*x[i]+b;                    //to calculate y(fitted) at given x points
+    cout<<"S.no"<<setw(5)<<"x"<<setw(19)<<"y(observed)"<<setw(19)<<"y(fitted)"<<endl;
+    cout<<"-----------------------------------------------------------------\n";
+    for (i=0;i<n;i++)
+        cout<<i+1<<"."<<setw(8)<<x[i]<<setw(15)<<y[i]<<setw(18)<<y_fit[i]<<endl;//print a table of x,y(obs.) and y(fit.)
+    cout<<"\nThe linear fit line is of the form:\n\n"<<a<<"x + "<<b<<endl;        //print the best fit line
 }
