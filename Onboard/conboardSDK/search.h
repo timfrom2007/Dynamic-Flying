@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iwlib.h>
 #include <algorithm>
+#include <typeinfo>
 
 #include "DJI_API.h"
 #include "DJI_Type.h"
@@ -38,7 +39,7 @@ struct CollectThreadParams
     bool isFlying = true;
 };
 
-double median_filter(int* rssi);
+double median_filter(double* rssi);
 double latitude(const Flight* flight);
 double longitude(const Flight* flight);
 double altitude(const Flight* flight);
@@ -62,9 +63,9 @@ double distance(int x1, int y1, int x2, int y2);
 void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);
 double calConstant(double x, double y, double m);
 int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);
-void nextWayPoint(WayPoint waypoint, double lat, double lon);
-void initWayPoint(WayPoint waypoint);
-void coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, double currLat, double currLon, double preLat, double preLon, int height);
+//void nextWayPoint(WayPoint waypoint, double lat, double lon);
+//void initWayPoint(WayPoint waypoint);
+void coordinateChanger(double xt, double yt, vector<double> &x_matrix, vector<double> &y_matrix, vector<double> &lat_matrix, vector<double> &lon_matrix);
 void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, double curYaw);
-double median_filter(int* rssi);
 void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, double currR, double currX, double currY, int height);
+double leastSquare(double xyt, vector<double> &xy_matrix, vector<double> &latlon_matrix);

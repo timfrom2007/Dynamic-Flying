@@ -60,9 +60,8 @@ int main(int argc, char *argv[])
 
     FILE *log = fopen("./log.txt","w");
     for(int i=0;i<record.size();i++){
-	printf("%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].ctimeStamp);
-	//cout<<record[i].timeStamp<<endl;
-	fprintf(log,"%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].ctimeStamp);
+        printf("%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude, record[i].RSSI, record[i].ctimeStamp);
+        fprintf(log,"%lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].ctimeStamp);
     }
     fclose(log);
     /*

@@ -44,36 +44,36 @@ void takeOff(VirtualRC *vrc)
 void *collectRSSI(void *ptr)
 {
     CollectThreadParams *params = (CollectThreadParams*)ptr;
-    vector<PointData> *record =  params->record;;
+    vector<PointData> *record =  params->record;
     time_t startTime = time(0);
-    clock_t start=clock(), finish;
 
     while(params->isFlying){
         usleep(100*1000);
-        //finish = clock();
         PointData p;
         p.latitude = latitude(params->flight);
         p.longitude = longitude(params->flight);
         p.altitude = altitude(params->flight);
-        p.RSSI = getFakeRSSI(params->flight,0.393468,1.988961, 0, p.startSearch);
+        p.ctimeStamp = clock();
+
+        p.RSSI = getFakeRSSI(params->flight,0.393463,1.988961, 0, p.startSearch);
 
         struct filtering_result{
-            float median;
+            double median;
         } filter;
 
-		finish = clock();
 
-		p.ctimeStamp = (finish - start)/ CLOCKS_PER_SEC;
+
 		record->push_back(p);
-
+        return 0;
     }
-    return 0;
-    /*
+
+/*
         iwrange range;
         int sock;
         wireless_info info;
         sock = iw_sockets_open();
         int collect[50];
+        double fCollect[50];
 
 
         if(iw_get_range_info(sock,"wlan0",&range)<0){
@@ -87,18 +87,25 @@ void *collectRSSI(void *ptr)
             iw_get_stats(sock,"wlan0",&(info.stats),&range, 1);
             int r = (int8_t)info.stats.qual.level;
             if(i%20==0){
-                collect[count] = (int8_t)info.stats.qual.level;
+                collect[count] = r;
                 //printf("%d\n",(int8_t)info.stats.qual.level);
                 count++;
             }
-            //usleep(100);
             i++;
         }
 
 		sort(collect, collect+50);
-	  	filter.median = median_filter(collect);
+		for(i = 0; i < 50; i++) {
+            fCollect[i] = (double)collect[i];
+        }
+	  	filter.median = median_filter(fCollect);
 
 		p.RSSI = filter.median;
+
+		record->push_back(p);
+    }
+
+    return 0;
     */
 }
 
@@ -126,6 +133,11 @@ vector<PointData> planPath(CoreAPI *api){
     double Xa=0.0, Ya=0.0, Xb=0.0, Yb=0.0, Xt=0.0, Yt=0.0, LatA=0.0, LonA=0.0, LatB=0.0, LonB=0.0; //For CoordinateChanger
     vector<double> r_matrix;
 
+    vector<double> x_matrix;
+    vector<double> y_matrix;
+    vector<double> lat_matrix;
+    vector<double> lon_matrix;
+
     // Start Searching
     vector<PointData> record = goFind(api,"./preFlight.txt", distPercent);  //main record
     vector<PointData> searchRecord = goFind(api,"./moveStraight.txt", distPercent); // each turn record
@@ -137,12 +149,13 @@ vector<PointData> planPath(CoreAPI *api){
 
     double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
     cout << "moveDistance: " << moveDistance << endl;
+    cout << "RSSI:" << searchRecord[searchRecord.size()-1].RSSI << endl;
     double cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
     double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
     cout << "CurR: " << cur_radius << ", PreR: " << pre_radius <<endl;
 
     currX = pre_radius;
-    Xa=pre_radius;  Ya=0.0; LatA=preLat; LonA=preLon;
+
 
     // 2D Array malloc //
     int height = floor(pre_radius+20);
@@ -203,7 +216,7 @@ vector<PointData> planPath(CoreAPI *api){
             }
         }
 
-
+        //Get current Yaw
         curYaw = getYaw(flight);
         curYaw = curYaw * -1;
         if(curYaw<0){
@@ -211,17 +224,30 @@ vector<PointData> planPath(CoreAPI *api){
         }
 
         flightMove(&currX, &currY, &preX, &preY, descision, moveDistance, curYaw);
+        x_matrix.push_back(preX); y_matrix.push_back(preY); lat_matrix.push_back(preLat); lon_matrix.push_back(preLon);
+
         cout << "CurrLat:" << currLat << " CurrLon:" << currLon << ", PreLat:" << preLat << " PreLon:" << preLon << endl;
         cout << "CurrX:" << currX << " CurrY:" << currY << ", PreX:" << preX << " PreY:" << preY << endl;
-        r_matrix.clear();
 
+        r_matrix.clear();
         rotation_matrix(currX, currY, preX, preY, r_matrix, curYaw);
-        addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
+
+        if(cur_radius>0){
+            addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
+            predictPos(map_weight, map_count, &Xt, &Yt, cur_radius, currX, currY, height);  //得出最高權重的(X,Y)點
+            coordinateChanger(Xt, Yt, x_matrix, y_matrix, lat_matrix, lon_matrix);
+        }
+
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
 
-        Xb=preX; Yb=preY; LatB=preLat; LonB=preLon;
-        predictPos(map_weight, map_count, &Xt, &Yt, cur_radius, currX, currY, height);  //得出最高權重的(X,Y)點
-        coordinateChanger(Xt, Yt, Xa, Ya, Xb, Yb, LatA, LonA, LatB, LatB, height);
+
+
+        if(count>10){
+            guessLon = leastSquare(Xt, x_matrix, lon_matrix);
+            guessLat = leastSquare(Yt, y_matrix, lat_matrix);
+            cout << "least square:\n" << "Lat:" << guessLat << ", Lon:" << guessLon << endl;
+        }
+
         cout<< "------------------------------------\n" <<endl;
 
         cout << "Decision: " << descision << " TurnCase: " << turnCase <<endl;
@@ -231,7 +257,7 @@ vector<PointData> planPath(CoreAPI *api){
         ///// Next Round of Flight /////
         ////////////////////////////////
         distPercent = cur_radius/height;
-        if(distPercent>1.0){
+        if(distPercent>1.0 || distPercent<0){
             distPercent = 1.0;
         }
 
@@ -264,6 +290,9 @@ vector<PointData> planPath(CoreAPI *api){
 
     }while(cur_radius>10);
 
+    for(int i=0; i<record.size(); i++){
+        record[i].ctimeStamp = (record[i].ctimeStamp - record[0].ctimeStamp) / CLOCKS_PER_SEC;
+    }
 
     return record;
 }
@@ -313,7 +342,9 @@ double getFakeRSSI(const Flight *flight,double la,double lo,double al, int start
     double dist = 1000 * earth_distance(la,lo,lat,lon,'K'); //meters
     dist = sqrt((dist*dist)+(alt-al)*(alt-al));
     double n=2, A= -10; //n:path-loss exponent, A:RSSI per unit
-    double rssi = A - 10*n*log10(dist); // + 1.4 * normalDistribution();
+    double noise = 5 * normalDistribution();
+    cout << noise << endl;
+    double rssi = A - 10*n*log10(dist) + noise;
     /*
     if(dist>300 && startSearch==0){
 		rssi = 1;
@@ -343,26 +374,40 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
   return (dist);
 }
 
-void coordinateChanger(double xt, double yt, double xa, double ya, double xb, double yb, double LatA, double LonA, double LatB, double LonB, int height){  //XY coordinate to Lon,Lat coordinate
+void coordinateChanger(double xt, double yt, vector<double> &x_matrix, vector<double> &y_matrix, vector<double> &lat_matrix, vector<double> &lon_matrix){  //XY coordinate to Lon,Lat coordinate
 	/*  we solve the linear system
      *  ax+by=e  lonA*lon + latA*lat = xt*xa + yt*ya
      *  cx+dy=f  lonB*lon + latB*lat = xt*xb + yt*yb
      */
+
     /* we solve the linear system
      * ax+by=e
      * cx+dy=f
      */
 
+     double xA=0.0, xB =0.0, yA=0.0, yB=0.0, lonA=0.0, lonB=0.0, latA=0.0, latB=0.0;
+     xA=x_matrix[10];
+     xB=x_matrix[15];
+     yA=y_matrix[10];
+     xB=y_matrix[15];
+     latA=lat_matrix[10];
+     latB=lat_matrix[15];
+     lonA=lon_matrix[10];
+     lonB=lon_matrix[15];
 
-    xt -=height;
-    xa -=height;
-    xb -=height;
-    double a = LonA-1.988958;
-	double b = LatA-0.393446;
-	double c = LonB-1.988958;
-	double d = LatB-0.393446;
-	double e = xt*xa + yt*ya;
-	double f = xt*xb + yt*yb;
+
+    xt -= x_matrix[0];
+    xA -= x_matrix[0];
+    xB -= x_matrix[0];
+    yt -= y_matrix[0];
+    yA -= y_matrix[0];
+    yB -= y_matrix[0];
+    double a = lonA-lon_matrix[0];
+	double b = latA-lat_matrix[0];
+	double c = lonB-lon_matrix[0];
+	double d = latB-lat_matrix[0];
+	double e = xt*xA + yt*yA;
+	double f = xt*xB + yt*yB;
 
 	double tarLong=0.0, tarLat=0.0;
 
@@ -371,16 +416,13 @@ void coordinateChanger(double xt, double yt, double xa, double ya, double xb, do
 	//cout << "a:" << a << " b:" << b << " c:" << c << " d:" << d << " e:" << e << " f:" << f << " deter:" << determinant <<endl;
 
     if(determinant != 0) {
-        tarLong = ((e*d - b*f)/determinant) + 1.988958;
-        tarLat = (a*f - e*c)/determinant + 0.393446;
+        tarLong = ((e*d - b*f)/determinant) + lon_matrix[0];
+        tarLat = (a*f - e*c)/determinant + lat_matrix[0];
     } else {
         printf("Cramer equations system: determinant is zero\n");
     }
 
 	cout << "predictLong:" <<tarLong << " predictLat:" << tarLat <<endl;
-
-
-
 
 }
 /*
@@ -475,11 +517,18 @@ PointData calculatePos4(vector<PointData> *record) //Modified Differential RSSI
 */
 double rssiToDist(double rssi, double altitude)
 {
-    double n=2, A=-10; //n:path-loss exponent, A:RSSI per unit
-    double dist=10, exp= (A-rssi) / (10*n);
-    dist = pow(dist, exp);
-    dist = sqrt(pow(dist,n) + pow(altitude, n));
-    return dist;
+    double dist=0;
+    if(rssi<0){
+        double n=2, A=-10; //n:path-loss exponent, A:RSSI per unit
+        double dist=10, exp= (A-rssi) / (10*n);
+        dist = pow(dist, exp);
+        dist = sqrt(pow(dist,n) + pow(altitude, n));
+        return dist;
+    }
+    else {
+        double dist=-1;
+        return dist;
+    }
 }
 
 double normalDistribution()
@@ -489,62 +538,24 @@ double normalDistribution()
     double v = rand() / (double)RAND_MAX;
     double x = sqrt(-2 * log(u)) * cos (2 * _PI_ * v);
     return x;
+
 }
 
 
-/*
+/**
 
 Dynamic Path Planning Function
 
-*/
+**/
 
 
 void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw){
-
-    /*
-    double degree = _PI_ / 4;
-    int deltaX = currX - preX;
-    int deltaY = currY - preY;
-
-    if (deltaX != 0 && deltaY != 0) {
-        if (deltaX > 5 && deltaY > 5) {
-            degree = degree * 7;
-        } else if (deltaX > 5 && deltaY < -5) {
-            degree = degree * 5;
-        } else if (deltaX < -5 && deltaY > 5) {
-            degree = degree * 1;
-        } else if (deltaX < -5 && deltaY < -5) {
-            degree = degree * 3;
-
-        } else if (-5 <= deltaX <= 5 && deltaY > 5) {
-            degree = degree * 0;
-        } else if (deltaX < -5 && -5 <= deltaY <= 5) {
-            degree = degree * 2;
-        } else if (-5 <= deltaX <= 5 && deltaY < -5) {
-            degree = degree * 4;
-        } else if (deltaX > 5 && -5 <= deltaY <= 5) {
-            degree = degree * 6;
-        }
-    } else if (deltaX == 0 && deltaY != 0) {
-        if (deltaY > 0) {
-            degree = degree * 0;
-        } else if (deltaY < 0) {
-            degree = degree * 4;
-        }
-
-    } else if (deltaX != 0 && deltaY == 0) {
-        if (deltaX > 0) {
-            degree = degree * 6;
-        } else if (deltaX < 0) {
-            degree = degree * 2;
-        }
-    }
-    */
 
     r_matrix.push_back(cos(curYaw));
     r_matrix.push_back(sin(curYaw));
     r_matrix.push_back(-sin(curYaw));
     r_matrix.push_back(cos(curYaw));
+
 }
 
 double moveDistance_to_speed(double move_distance){
@@ -656,8 +667,6 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
     double slope=0.0;
     double split_line1=0.0;
     double split_line2=0.0;
-
-
 
     if (currX - preX == 0) {
         slope = 0;
@@ -938,7 +947,7 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
 
 
     srand(time(NULL));
-    if (cur_radius < pre_radius) {
+    if (cur_radius <= pre_radius) {
         if (*bool_predecision == 1) {
             *bool_predecision = 0;
             return *preturn;
@@ -1003,116 +1012,12 @@ void flightMove(double* currentX, double* currentY, double* preX, double* preY, 
     *preX = *currentX;
     *preY = *currentY;
 
-
     *currentX -= move_distance*sin(curYaw);
     *currentY += move_distance*cos(curYaw);
 
-    /*
-    switch (abs(turnCase)) {
-        case 1:
-            if (descision == 0) {
-                *currentX += 0;
-                *currentY += move_distance;
-            } else if (descision == 1) {
-                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 2) {
-                *currentX += move_distance;
-                *currentY += 0;
-            }
-            break;
-        case 2:
-            if (descision == 0) {
-                *currentX -= move_distance;
-                *currentY += 0;
-            } else if (descision == 1) {
-                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 2) {
-                *currentX += 0;
-                *currentY += move_distance;
-            }
-            break;
-        case 3:
-            if (descision == 0) {
-                *currentX += 0;
-                *currentY -= move_distance;
-            } else if (descision == 1) {
-                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 2) {
-                *currentX -= move_distance;
-                *currentY += 0;
-            }
-            break;
-        case 4:
-            if (descision == 0) {
-                *currentX += move_distance;
-                *currentY += 0;
-            } else if (descision == 1) {
-                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 2) {
-                *currentX += 0;
-                *currentY += -move_distance;
-            }
-            break;
-        case 5:
-            if (descision == 0) {
-                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 1) {
-                *currentX += 0;
-                *currentY += move_distance;
-            } else if (descision == 2) {
-                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
-            }
-            break;
-        case 6:
-            if (descision == 0) {
-                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 1) {
-                *currentX -= move_distance;
-                *currentY += 0;
-            } else if (descision == 2) {
-                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
-            }
-            break;
-        case 7:
-            if (descision == 0) {
-                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 1) {
-                *currentX += 0;
-                *currentY -= move_distance;
-            } else if (descision == 2) {
-                *currentX -= pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
-            }
-            break;
-        case 8:
-            if (descision == 0) {
-                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY += pow((pow(move_distance, 2)) / 2, 0.5);
-            } else if (descision == 1) {
-                *currentX += move_distance;
-                *currentY += 0;
-            } else if (descision == 2) {
-                *currentX += pow((pow(move_distance, 2)) / 2, 0.5);
-                *currentY -= pow((pow(move_distance, 2)) / 2, 0.5);
-            }
-            break;
-        default:
-            cout << "flightMove Error" << endl;
-    }
-    */
-
 }
 
-double median_filter(int* rssi)
+double median_filter(double* rssi)
 {
     double result;
     int mid = sizeof(rssi)/2;
@@ -1173,36 +1078,31 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, do
     *Yt = large[2] / large[3];
     */
     cout << "X:" << *Xt << " Y:" << *Yt << " Count:" << large[3] << endl;
-
 }
 
-void leastSquare(double xt, double yt, double xa, double ya, double xb, double yb, double LatA, double LonA, double LatB, double LonB)
+
+double leastSquare(double xyt, vector<double> &xy_matrix, vector<double> &latlon_matrix)
 {
-    int i,j,k,n=3;
-    cout<<"\nEnter the no. of data pairs to be entered:\n";        //To find the size of arrays
-    double x[n],y[n],a,b;
-    cout<<"\nEnter the x-axis values:\n";                //Input x-values
-    for (i=0;i<n;i++)
-        cin>>x[i];
-    cout<<"\nEnter the y-axis values:\n";                //Input y-values
-    for (i=0;i<n;i++)
-        cin>>y[i];
+    int i, n=xy_matrix.size();
+    double a,b;
+    double y=0.0;
+
+
     double xsum=0,x2sum=0,ysum=0,xysum=0;                //variables for sums/sigma of xi,yi,xi^2,xiyi etc
     for (i=0;i<n;i++)
     {
-        xsum=xsum+x[i];                        //calculate sigma(xi)
-        ysum=ysum+y[i];                        //calculate sigma(yi)
-        x2sum=x2sum+pow(x[i],2);                //calculate sigma(x^2i)
-        xysum=xysum+x[i]*y[i];                    //calculate sigma(xi*yi)
+        xsum=xsum+xy_matrix[i];                        //calculate sigma(xi)
+        ysum=ysum+latlon_matrix[i];                        //calculate sigma(yi)
+        x2sum=x2sum+pow(xy_matrix[i],2);                //calculate sigma(x^2i)
+        xysum=xysum+xy_matrix[i]*latlon_matrix[i];                    //calculate sigma(xi*yi)
     }
+
+    // y = ax+b
     a=(n*xysum-xsum*ysum)/(n*x2sum-xsum*xsum);            //calculate slope
     b=(x2sum*ysum-xsum*xysum)/(x2sum*n-xsum*xsum);            //calculate intercept
-    double y_fit[n];                        //an array to store the new fitted values of y
-    for (i=0;i<n;i++)
-        y_fit[i]=a*x[i]+b;                    //to calculate y(fitted) at given x points
-    cout<<"S.no"<<setw(5)<<"x"<<setw(19)<<"y(observed)"<<setw(19)<<"y(fitted)"<<endl;
-    cout<<"-----------------------------------------------------------------\n";
-    for (i=0;i<n;i++)
-        cout<<i+1<<"."<<setw(8)<<x[i]<<setw(15)<<y[i]<<setw(18)<<y_fit[i]<<endl;//print a table of x,y(obs.) and y(fit.)
-    cout<<"\nThe linear fit line is of the form:\n\n"<<a<<"x + "<<b<<endl;        //print the best fit line
+
+    y = a*xyt + b;
+
+    return y;
 }
+
