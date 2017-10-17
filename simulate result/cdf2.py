@@ -31,5 +31,7 @@ print(total)
 yvals=np.arange(len(sorted_data))/float(len(sorted_data)-1)
 
 plt.plot(sorted_data,yvals)
+plt.plot(sorted_data,yvals-1)
+
 
 plt.show()

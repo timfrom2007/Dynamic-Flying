@@ -18,9 +18,9 @@ int main (){
     
 
   double theta, dist;
-  double lon1 = 1.988958; //1.988964
-  double lon2 = 1.988961;
-  double lat1 = 0.393446; //0.393454, 0.393438 - 0.393470
+  double lon1 = 1.988963; //1.988958
+  double lon2 = 1.988969;
+  double lat1 = 0.393446; //0.393446
   double lat2 = 0.393463;
 
   theta = lon1 - lon2;

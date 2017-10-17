@@ -27,15 +27,10 @@ for line in f:
     
 ax.plot(lat, long, lw=2, label='UAV Path')    
 plt.plot([0.393446],[1.988958],'o', label='UAV')  #出發點
-plt.plot([0.393468],[1.988961],'o', label='TARGET')  #Target
-
-
-
-#plt.plot([0.393454],[1.988964],'o', label='phone')  #手機
+plt.plot([0.393463],[1.988969],'o', label='TARGET')  #Target
 
 #plt.plot([0.393455],[1.988963],'o', label='DRSSI')  #RSSI 定位
-#plt.plot([0.393455],[1.988964],'o', label='RSSI_N')  #RSSI(改) 定位
-#plt.plot([0.393453],[1.988963],'o', label='Tril')  #Tri 定位
+
 
 ax.legend()
 

@@ -1,0 +1,3 @@
+Attitude sampling rate : 2 per sec
+GPS sampling rate : 10 per sec
+Experiment target : height error

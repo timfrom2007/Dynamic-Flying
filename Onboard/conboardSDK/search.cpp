@@ -2,10 +2,12 @@
 #define _PI_ 3.14159265358979323846
 double latitude(const Flight *flight)
 {
+
     return flight->getPosition().latitude;
 }
 double longitude(const Flight *flight)
 {
+
     return flight->getPosition().longitude;
 }
 double altitude(const Flight *flight)
@@ -35,6 +37,7 @@ void takeOff(VirtualRC *vrc)
     vdata.yaw = 1024+660;
     vrc->sendData(vdata);
     sleep(5);
+
     VirtualRCData vdata2;
     vdata2.throttle = 1024+330;
     vrc->sendData(vdata2);
@@ -55,7 +58,15 @@ void *collectRSSI(void *ptr)
         p.altitude = altitude(params->flight);
         p.ctimeStamp = clock();
 
-        p.RSSI = getFakeRSSI(params->flight,0.393463,1.988961, 0, p.startSearch);
+        double collect[100];
+        int i=0;
+        while(i<100){
+            collect[i] = getFakeRSSI(params->flight,0.393463,1.988969, 0, p.startSearch); //Hard Cord
+            i++;
+        }
+        cout << median_filter(collect) <<endl;
+        p.RSSI = median_filter(collect);
+
 
         struct filtering_result{
             double median;
@@ -111,7 +122,6 @@ void *collectRSSI(void *ptr)
 
 vector<PointData> planPath(CoreAPI *api){
 
-
     /////////////////////
     // extern variable //
     /////////////////////
@@ -121,7 +131,7 @@ vector<PointData> planPath(CoreAPI *api){
     int descision = 1;  //0:left, 1:mid, 2:right
     int bool_predecision = 0;  //Previous decision is correct or not
     double distPercent=1.0;
-
+    int predictCount = 0;
 
 
 
@@ -131,34 +141,38 @@ vector<PointData> planPath(CoreAPI *api){
     double currLat=0.0, currLon=0.0, preLat=0.0, preLon=0.0; //Latitude and Longitude, in Geographic coordinate system
     double guessLon=0.0, guessLat=0.0;  //guess Target position, need to transform
     double Xa=0.0, Ya=0.0, Xb=0.0, Yb=0.0, Xt=0.0, Yt=0.0, LatA=0.0, LonA=0.0, LatB=0.0, LonB=0.0; //For CoordinateChanger
+    double tol_moveDist = 0.0, err_dist=0.0;
+    double moveDistance =0.0, cur_radius=0.0, pre_radius=0.0;
     vector<double> r_matrix;
 
     vector<double> x_matrix;
     vector<double> y_matrix;
-    vector<double> lat_matrix;
-    vector<double> lon_matrix;
+    vector<double> lat_matrix, lon_matrix;
 
     // Start Searching
     vector<PointData> record = goFind(api,"./preFlight.txt", distPercent);  //main record
     vector<PointData> searchRecord = goFind(api,"./moveStraight.txt", distPercent); // each turn record
+    vector<GuessPosition> guess;
 
     currLat = searchRecord[searchRecord.size()-1].latitude;
     currLon = searchRecord[searchRecord.size()-1].longitude;
     preLat = record[record.size()-1].latitude;
     preLon = record[record.size()-1].longitude;
 
-    double moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
-    cout << "moveDistance: " << moveDistance << endl;
-    cout << "RSSI:" << searchRecord[searchRecord.size()-1].RSSI << endl;
-    double cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
-    double pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-    cout << "CurR: " << cur_radius << ", PreR: " << pre_radius <<endl;
+    moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000; //km to m
+    tol_moveDist += moveDistance;
 
-    currX = pre_radius;
+    printf("moveDistance: %lf\n", moveDistance);
+    printf("RSSI: %lf\n", searchRecord[searchRecord.size()-1].RSSI);
+
+    cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
+    pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
+
+    currX = pre_radius+20; //Hard Cord
 
 
     // 2D Array malloc //
-    int height = floor(pre_radius+20);
+    int height = out4in5(pre_radius+20);  //Hard Cord
     int width = height*2;
 
     // 生成一維指標陣列
@@ -203,17 +217,20 @@ vector<PointData> planPath(CoreAPI *api){
     }
 
     record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
+    record[record.size()-1].total_moveDist = tol_moveDist;
 
     //Start Dynamic Path Planning
+    int recount=0;
     do{
         count+=1;
-        if(count==30){
+        if(cur_radius<height/2 && recount==0){  //Hard Cord
             for(i=0; i<height; i++) {
                 for(j=0; j<width; j++){
                     map_count[i][j] = 0;
                     map_weight[i][j] = 0.0;
                 }
             }
+            recount =1;
         }
 
         //Get current Yaw
@@ -226,26 +243,39 @@ vector<PointData> planPath(CoreAPI *api){
         flightMove(&currX, &currY, &preX, &preY, descision, moveDistance, curYaw);
         x_matrix.push_back(preX); y_matrix.push_back(preY); lat_matrix.push_back(preLat); lon_matrix.push_back(preLon);
 
-        cout << "CurrLat:" << currLat << " CurrLon:" << currLon << ", PreLat:" << preLat << " PreLon:" << preLon << endl;
-        cout << "CurrX:" << currX << " CurrY:" << currY << ", PreX:" << preX << " PreY:" << preY << endl;
+        printf("CurrLat:%lf CurrLon:%lf, PreLat:%lf PreLon:%lf\n", currLat, currLon, preLat, preLon);
+        printf("CurrX:%lf CurrY:%lf, PreX:%lf PreY:%lf\n", currX, currY, preX, preY);
 
         r_matrix.clear();
         rotation_matrix(currX, currY, preX, preY, r_matrix, curYaw);
 
         if(cur_radius>0){
             addWeight(currX, currY, preX, preY, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
-            predictPos(map_weight, map_count, &Xt, &Yt, cur_radius, currX, currY, height);  //得出最高權重的(X,Y)點
-            coordinateChanger(Xt, Yt, x_matrix, y_matrix, lat_matrix, lon_matrix);
+            guess = predictPos(map_weight, map_count, cur_radius, currX, currY, height);  //得出最高權重的(X,Y)點
+            //coordinateChanger(Xt, Yt, x_matrix, y_matrix, lat_matrix, lon_matrix);  //hen不準，不知道自己在寫什麼
         }
 
         descision = turnDecision(currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
 
 
 
-        if(count>10){
-            guessLon = leastSquare(Xt, x_matrix, lon_matrix);
-            guessLat = leastSquare(Yt, y_matrix, lat_matrix);
-            cout << "least square:\n" << "Lat:" << guessLat << ", Lon:" << guessLon << endl;
+        if(count>10){ //Hard Cord
+            for(int heyo=0; heyo<guess.size(); heyo++){
+                guessLon = leastSquare(guess[heyo].xt, x_matrix, lon_matrix);
+                guessLat = leastSquare(guess[heyo].yt, y_matrix, lat_matrix);
+                err_dist = earth_distance(0.393463, 1.988969, guessLat, guessLon, 'K') * 1000;
+                printf("least square:\n Xt:%d , Yt:%d , threshold:%lf \n Lat:%lf , Lon:%lf , err_dist:%lf\n  ", guess[heyo].xt, guess[heyo].yt, guess[heyo].threshold, guessLat, guessLon, err_dist);
+            }
+
+            //record[record.size()-1].error_dist = err_dist;
+            //record[record.size()-1].guessLatitude = guessLat;
+            //record[record.size()-1].guessLongitude = guessLon;
+
+            //printf("least square:\n Lat:%lf , Lon:%lf\n", guessLat, guessLon);
+            x_matrix.erase(x_matrix.begin()); y_matrix.erase(y_matrix.begin()); lon_matrix.erase(lon_matrix.begin()); lat_matrix.erase(lat_matrix.begin());
+
+
+            //gaussFilter(record, &predictCount);
         }
 
         cout<< "------------------------------------\n" <<endl;
@@ -254,7 +284,7 @@ vector<PointData> planPath(CoreAPI *api){
 
 
         ////////////////////////////////
-        ///// Next Round of Flight /////
+        ///// Next out4in5 of Flight /////
         ////////////////////////////////
         distPercent = cur_radius/height;
         if(distPercent>1.0 || distPercent<0){
@@ -279,16 +309,24 @@ vector<PointData> planPath(CoreAPI *api){
         preLon = record[record.size()-1].longitude;
 
         moveDistance = earth_distance(currLat, currLon, preLat, preLon, 'K') * 1000;
-        cout << "moveDistance: " << moveDistance << endl;
+        tol_moveDist += moveDistance;
+        searchRecord[searchRecord.size()-1].total_moveDist = tol_moveDist;
+
+        printf("moveDistance: %lf\n", moveDistance);
 
         cur_radius = rssiToDist(searchRecord[searchRecord.size()-1].RSSI, searchRecord[searchRecord.size()-1].altitude);
         pre_radius = rssiToDist(record[record.size()-1].RSSI, record[record.size()-1].altitude);
-        cout << "CurR: " << cur_radius << ", PreR: " << pre_radius <<endl;
+
+        printf("CurR:%lf, PreR:\n", cur_radius, pre_radius);
+
         record.insert( record.end(), searchRecord.begin(), searchRecord.end() );
 
         cout << "Record Size:" << record.size() << " sRecord Size:" << searchRecord.size() <<endl;
 
-    }while(cur_radius>10);
+
+
+    }while(cur_radius>10); //Hard Cord
+
 
     for(int i=0; i<record.size(); i++){
         record[i].ctimeStamp = (record[i].ctimeStamp - record[0].ctimeStamp) / CLOCKS_PER_SEC;
@@ -320,7 +358,7 @@ vector<PointData> goFind(CoreAPI *api,const char *pathFile, double distPercent)
     fscanf(fp,"%d %d",&pitch,&yaw);
 
     do{
-    	control(&vrc, pitch*distPercent, yaw);
+    	control(&vrc, pitch*distPercent, yaw);  //Pitch Hard Code
     	usleep(100 * 1000);
     	fscanf(fp,"%d %d",&pitch,&yaw);
 
@@ -341,9 +379,20 @@ double getFakeRSSI(const Flight *flight,double la,double lo,double al, int start
     double alt = altitude(flight);
     double dist = 1000 * earth_distance(la,lo,lat,lon,'K'); //meters
     dist = sqrt((dist*dist)+(alt-al)*(alt-al));
-    double n=2, A= -10; //n:path-loss exponent, A:RSSI per unit
-    double noise = 5 * normalDistribution();
-    cout << noise << endl;
+    double n=2, A= -50; //n:path-loss exponent, A:RSSI per unit
+    double noise = 0.0;
+    if(dist>=100){
+        noise = 6 * normalDistribution();
+    }
+    else if(100>dist>=50){
+        noise = 4 * normalDistribution();
+    }
+    else if(50>dist>=20){
+        noise = 2 * normalDistribution();
+    }
+    else if(20>dist){
+        noise = normalDistribution();
+    }
     double rssi = A - 10*n*log10(dist) + noise;
     /*
     if(dist>300 && startSearch==0){
@@ -374,55 +423,30 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
   return (dist);
 }
 
-void coordinateChanger(double xt, double yt, vector<double> &x_matrix, vector<double> &y_matrix, vector<double> &lat_matrix, vector<double> &lon_matrix){  //XY coordinate to Lon,Lat coordinate
-	/*  we solve the linear system
-     *  ax+by=e  lonA*lon + latA*lat = xt*xa + yt*ya
-     *  cx+dy=f  lonB*lon + latB*lat = xt*xb + yt*yb
-     */
+void coordinateChanger(double xt, double yt, vector<double> x_matrix, vector<double> y_matrix, vector<double> lat_matrix, vector<double> lon_matrix){  //XY coordinate to Lon,Lat coordinate
 
-    /* we solve the linear system
-     * ax+by=e
-     * cx+dy=f
-     */
+    double xA=0.0, xB =0.0, yA=0.0, yB=0.0, lonA=0.0, lonB=0.0, latA=0.0, latB=0.0, lonT=0.0, latT=0.0, delta=0.0, x=0.0, y=0.0;
+    xA=x_matrix[x_matrix.size()-10] - x_matrix[x_matrix.size()];
+    xB=x_matrix[x_matrix.size()-5] - x_matrix[x_matrix.size()];
+    yA=y_matrix[y_matrix.size()-10] - y_matrix[y_matrix.size()];
+    yB=y_matrix[y_matrix.size()-5] - y_matrix[y_matrix.size()];
+    latA=lat_matrix[lat_matrix.size()-10] - lat_matrix[lat_matrix.size()];
+    latB=lat_matrix[lat_matrix.size()-5] - lat_matrix[lat_matrix.size()];
+    lonA=lon_matrix[lon_matrix.size()-10] - lon_matrix[lon_matrix.size()];
+    lonB=lon_matrix[lon_matrix.size()-5] - lon_matrix[lon_matrix.size()];
+    xt = xt - x_matrix[x_matrix.size()];
+    yt = yt - y_matrix[y_matrix.size()];
 
-     double xA=0.0, xB =0.0, yA=0.0, yB=0.0, lonA=0.0, lonB=0.0, latA=0.0, latB=0.0;
-     xA=x_matrix[10];
-     xB=x_matrix[15];
-     yA=y_matrix[10];
-     xB=y_matrix[15];
-     latA=lat_matrix[10];
-     latB=lat_matrix[15];
-     lonA=lon_matrix[10];
-     lonB=lon_matrix[15];
+    delta = 1/(latA*lonB-latB*lonA);
+    x = xA*xt+xB*yt;
+    y = yA*xt+yB*yt;
+    latT = delta*(lonB*x-lonA*y) + lat_matrix[lat_matrix.size()];
+    lonT = delta*(-latB*x+latA*y) + lon_matrix[lon_matrix.size()];
+
+    cout << "Coordinate Change:" <<endl;
+    cout << "Lat:" << latT << ", Lon:" << lonT << endl;
 
 
-    xt -= x_matrix[0];
-    xA -= x_matrix[0];
-    xB -= x_matrix[0];
-    yt -= y_matrix[0];
-    yA -= y_matrix[0];
-    yB -= y_matrix[0];
-    double a = lonA-lon_matrix[0];
-	double b = latA-lat_matrix[0];
-	double c = lonB-lon_matrix[0];
-	double d = latB-lat_matrix[0];
-	double e = xt*xA + yt*yA;
-	double f = xt*xB + yt*yB;
-
-	double tarLong=0.0, tarLat=0.0;
-
-	double determinant = a*d - b*c;
-
-	//cout << "a:" << a << " b:" << b << " c:" << c << " d:" << d << " e:" << e << " f:" << f << " deter:" << determinant <<endl;
-
-    if(determinant != 0) {
-        tarLong = ((e*d - b*f)/determinant) + lon_matrix[0];
-        tarLat = (a*f - e*c)/determinant + lat_matrix[0];
-    } else {
-        printf("Cramer equations system: determinant is zero\n");
-    }
-
-	cout << "predictLong:" <<tarLong << " predictLat:" << tarLat <<endl;
 
 }
 /*
@@ -519,9 +543,9 @@ double rssiToDist(double rssi, double altitude)
 {
     double dist=0;
     if(rssi<0){
-        double n=2, A=-10; //n:path-loss exponent, A:RSSI per unit
-        double dist=10, exp= (A-rssi) / (10*n);
-        dist = pow(dist, exp);
+        double n=2, A=-50; //n:path-loss exponent, A:RSSI per unit
+        double log=10, exp= (A-rssi) / (10*n);
+        dist = pow(log, exp);
         dist = sqrt(pow(dist,n) + pow(altitude, n));
         return dist;
     }
@@ -583,33 +607,36 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
 
 
     if (cur_radius - pre_radius > 0) {  //飛機遠離目標
-        for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++) {
+        for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++) {  //Hard Cord
             for (int j = currY; j >= currY - cur_radius + 5; j--) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                weight_i = out4in5((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + out4in5(currX);
+                weight_j = out4in5((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + out4in5(currY);
                 if ( height>weight_i && weight_i>=0 && (height*2)>weight_j && weight_j>=0 ) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
-                        if (cur_radius >= dist) {
-                            if (dist <= cur_radius) {
-                                map_weight[weight_i][weight_j] += dist / pow((cur_radius), 2);
-                                map_count[weight_i][weight_j] += 1;
-                            } else {
-                                map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / pow((cur_radius), 2);
-                                map_count[weight_i][weight_j] += 1;
-                            }
+                        if(cur_radius >= dist) {
+                            map_weight[weight_i][weight_j] += dist / pow((cur_radius), 2);
+                            map_count[weight_i][weight_j] += 1;
+                        }
+                        else {
+                            map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / pow((cur_radius), 2);
+                            map_count[weight_i][weight_j] += 1;
                         }
                     }
                 }
             }
-            for (int j = currY; j <= currY + cur_radius; j++) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+            for (int j = currY; j <= currY + cur_radius+5; j++) {  //Hard Cord
+                weight_i = out4in5((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + out4in5(currX);
+                weight_j = out4in5((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + out4in5(currY);
                 if (height>weight_i && weight_i>=0 && (height*2)>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
-                        if (cur_radius >= dist) {
-                            map_weight[weight_i][weight_j] += (dist / pow((cur_radius), 2))*0.8;
+                        if(cur_radius >= dist) {
+                            map_weight[weight_i][weight_j] += dist / pow((cur_radius), 2)*0.9;
+                            map_count[weight_i][weight_j] += 1;
+                        }
+                        else {
+                            map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / pow((cur_radius), 2)*0.9;
                             map_count[weight_i][weight_j] += 1;
                         }
                     }
@@ -617,34 +644,36 @@ void addWeight(double currX, double currY, double preX, double preY, double cur_
             }
         }
     } else if (cur_radius - pre_radius < 0) { //飛機靠近目標
-        for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++) {
-            for (int j = currY; j <= currY + cur_radius + 10; j++) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+        for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++) { //Hard Cord
+            for (int j = currY; j <= currY + cur_radius + 5; j++) {
+                weight_i = out4in5((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + out4in5(currX);
+                weight_j = out4in5((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + out4in5(currY);
                 if (height>weight_i && weight_i>=0 && (height*2)>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
-                        if (cur_radius >= dist) {
-
-                            if (dist <= cur_radius) {
-                                map_weight[weight_i][weight_j] += dist / pow((cur_radius), 2);
-                                map_count[weight_i][weight_j] += 1;
-                            } else {
-                                map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / pow((cur_radius), 2);
-                                map_count[weight_i][weight_j] += 1;
-                            }
+                        if(cur_radius >= dist) {
+                            map_weight[weight_i][weight_j] += dist / pow((cur_radius), 2);
+                            map_count[weight_i][weight_j] += 1;
+                        }
+                        else {
+                            map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / pow((cur_radius), 2);
+                            map_count[weight_i][weight_j] += 1;
                         }
                     }
                 }
             }
-            for (int j = currY; j >= currY - cur_radius; j--) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+            for (int j = currY; j >= currY - cur_radius-5; j--) { //Hard Cord
+                weight_i = out4in5((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + out4in5(currX);
+                weight_j = out4in5((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + out4in5(currY);
                 if (height>weight_i && weight_i>=0 && (height*2)>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] >= 0) {
                         double dist = distance(weight_i, weight_j, currX, currY);
-                        if (cur_radius >= dist) {
-                            map_weight[weight_i][weight_j] += (dist / pow((cur_radius), 2))*0.8;
+                        if(cur_radius >= dist) {
+                            map_weight[weight_i][weight_j] += dist / pow((cur_radius), 2)*0.9;
+                            map_count[weight_i][weight_j] += 1;
+                        }
+                        else {
+                            map_weight[weight_i][weight_j] += (cur_radius * 2 - dist) / pow((cur_radius), 2)*0.9;
                             map_count[weight_i][weight_j] += 1;
                         }
                     }
@@ -714,13 +743,13 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
     int weight_i=0;
     int weight_j=0;
 
-        cout << "turn Flag:2" << endl;
+
 
 
         for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++) {
-            for (int j = currY; j <= currY + cur_radius + 10; j++) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+            for (int j = currY; j <= currY + cur_radius + 5; j++) {
+                weight_i = out4in5((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + out4in5(currX);
+                weight_j = out4in5((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + out4in5(currY);
                 if (height>weight_i && weight_i>=0 && (height*2)>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] > 0) {
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
@@ -830,8 +859,8 @@ int turnDecision(double currX, double currY, double preX, double preY, int* pret
             }
 
             for (int j = currY; j >= currY - cur_radius - 5; j--) {
-                weight_i = floor((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + floor(currX);
-                weight_j = floor((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + floor(currY);
+                weight_i = out4in5((i - currX) * r_matrix[0] + (j - currY) * r_matrix[1]) + out4in5(currX);
+                weight_j = out4in5((i - currX) * r_matrix[2] + (j - currY) * r_matrix[3]) + out4in5(currY);
                 if (height>weight_i && weight_i>=0 && (height*2)>weight_j && weight_j>=0) {
                     if (map_weight[weight_i][weight_j] > 0) {
                         if (pow(weight_i - currX, 2) + pow(weight_j - currY, 2) <= cur_radius) {
@@ -1030,12 +1059,16 @@ double median_filter(double* rssi)
     return result;
 }
 
-void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, double currR, double currX, double currY, int height)  //predict positon in XY coordination
+vector<GuessPosition> predictPos(double** map_weight, int** map_count, double currR, double currX, double currY, int height)  //predict positon in XY coordination
 {
     double large[4] = {0.0, 0.0, 0.0, 0.0};
-    double predictDistance = 0.0, distError = 0.0, treshold = 100.0;
+    double predictDistance = 0.0, distError = 0.0, threshold = 100.0;
+    int errorCount=0;
+    int i=0, j=0;
 
-     int i=0, j=0;
+    vector<GuessPosition> guess;
+    GuessPosition g;
+
 
      //找到目前最大的權重
      for(i=0; i<height; i++) {
@@ -1048,36 +1081,52 @@ void predictPos(double** map_weight, int** map_count, double* Xt, double* Yt, do
         }
     }
 
-    //
+    //找出dist_error 的 threshold
     for (i=0; i<height; i++) {
         for (j=0; j<(height*2); j++) {
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {  //*0.9是避免RSSI誤差
+                if ( map_weight[i][j] / map_count[i][j] > large[0] * 0.95) {  //*0.9是避免RSSI誤差
+                    predictDistance = distance(i, j, currX, currY);
+                    distError = abs(predictDistance-currR);
+                    if(distError<=threshold){
+                        //*Xt = i;
+                        //*Yt = j;
+                        threshold = distError;
+                    }
 
-                    /*
-                    large[1] += i;
-                    large[2] += j;
-                    large[3] += 1;
-                    */
+                }
+                else if(map_weight[i][j] / map_count[i][j] == large[0]){
+                    g.xt = i;
+                    g.yt = j;
+                    guess.push_back(g);
+                }
+            }
+        }
+    }
+
+
+    for (i=0; i<height; i++) {
+        for (j=0; j<(height*2); j++) {
+            if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
+                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.95) {  //*0.9是避免RSSI誤差
 
                     large[3] += 1;
                     predictDistance = distance(i, j, currX, currY);
                     distError = abs(predictDistance-currR);
-                    if(distError<=treshold){
-                        *Xt = i;
-                        *Yt = j;
-                        treshold = distError;
+                    if(distError*0.95<=threshold){  //Hard Cord
+                        errorCount++;
+                        g.xt = i;
+                        g.yt = j;
+                        g.threshold = distError;
+                        guess.push_back(g);
                     }
 
                 }
             }
         }
     }
-    /*
-    *Xt = large[1] / large[3];
-    *Yt = large[2] / large[3];
-    */
-    cout << "X:" << *Xt << " Y:" << *Yt << " Count:" << large[3] << endl;
+
+    return guess;
 }
 
 
@@ -1106,3 +1155,71 @@ double leastSquare(double xyt, vector<double> &xy_matrix, vector<double> &latlon
     return y;
 }
 
+void gaussFilter(vector<PointData> record, int *predictCount){
+
+    double uLat=0.0, uLon=0.0, sdLat=0.0, sdLon=0.0; //Standard Deviation
+    double guessLon=0.0, guessLat=0.0;
+    int guessCount=0, i=0;
+    for(i=record.size()-8; i<record.size(); i++){
+        uLat += record[i].guessLatitude;
+        uLon += record[i].guessLongitude;
+    }
+
+    uLat = uLat/8; //Hard Cord
+    uLon = uLon/8; //Hard Cord
+    cout << "uLat:" << uLat << ", uLon:"<< uLon << endl;
+
+    for(i=record.size()-8; i<record.size(); i++){
+        sdLat += pow((record[i].guessLatitude - uLat), 2);
+        sdLon += pow((record[i].guessLongitude - uLon), 2);
+    }
+
+    cout << "sdLat:" << sdLat << ", sdLon:"<<sdLon << endl;
+    sdLat = sqrt(sdLat/8);  //Hard Cord
+    sdLon = sqrt(sdLon/8);  //Hard Cord
+    cout << "sdLat:" << sdLat << ", sdLon:"<<sdLon << endl;
+
+    for(i=record.size()-8; i<record.size(); i++){
+        if((uLat-sdLat)<=record[i].guessLatitude<=(uLat+sdLat)){
+            if((uLon-sdLon)<=record[i].guessLongitude<=(uLon+sdLon)){
+                guessLat += record[i].guessLatitude;
+                guessLon += record[i].guessLongitude;
+                guessCount++;
+            }
+        }
+    }
+    guessLat = guessLat/guessCount;
+    guessLon = guessLon/guessCount;
+    record[i].guessLatitude = guessLat;
+    record[i].guessLongitude = guessLon;
+    printf("Gauss Guess:\n Lat:%lf , Lon:%lf\n", guessLat, guessLon);
+
+    if(record[i-1].guessLatitude = record[i].guessLatitude && record[i-1].guessLongitude==record[i].guessLongitude){
+        *predictCount += 1;
+    }
+    else{
+        *predictCount==0;
+    }
+}
+
+double kalman_filter(double* rssi){
+
+    double X=0.0, P=3.0, Q=0.0001, K=0.0, R=1.0, I=1.0;
+
+    for(int i=0; i<sizeof(*rssi); i++){
+        X=X;
+        P = P+Q;
+        K = P / (P + R);
+        X = X + K * (rssi[i] - X);
+        P = (I - K) * P;
+    }
+
+    return X;
+
+}
+
+int out4in5(double x){
+    x = x+0.5;
+    x = floor(x);
+    return (int)x;
+}

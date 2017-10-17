@@ -1,0 +1,13 @@
+-------------------------
+q0 = 0
+q1 = 0
+q2 = 0
+q3 = 0
+latitude = 0
+longitude = 0
+altitude = 0
+height = 0
+Vx = 0
+Vy = 0
+Vz = 0
+yaw = 0
