@@ -67,6 +67,8 @@ var m = "Median Filter: ";
 var k = "Kalman Filter: ";
 var d = "RSSI: ";
 
+var collect_all_count = [];
+
 
 function setup() {
     createCanvas(2000, 1200);
@@ -172,25 +174,28 @@ function mousePressed() {
 
             record_each100_point(dist_error, move_distance);
             rssi_filter = [];
+            
+            if(restart_count == 100 && step_count == 99){
+                console.log(accumulation/(step_count+1));
+            }
 
 
 
             //Show Result
             if (step_count == 99 && restart_count == 100 && targetX == 650) {
-                accumulation = accumulation/step_count+1;
-                console.log(accumulation);
+                
                 for (var i = 0; i < g_all.length; i++) {
-                    ge = ge.concat(guess_error[i]/accumulation);
+                    ge = ge.concat(guess_error[i] / collect_all_count[i]);
                     ge = ge.concat(" ");
-                    td = td.concat(total_distance[i]/accumulation);
+                    td = td.concat(total_distance[i] / collect_all_count[i]);
                     td = td.concat(" ");
-                    g = g.concat(g_all[i] / accumulation);
+                    g = g.concat(g_all[i] / collect_all_count[i]);
                     g = g.concat(" ");
-                    m = m.concat(m_all[i] / accumulation);
+                    m = m.concat(m_all[i] / collect_all_count[i]);
                     m = m.concat(" ");
-                    k = k.concat(k_all[i] / accumulation);
+                    k = k.concat(k_all[i] / collect_all_count[i]);
                     k = k.concat(" ");
-                    d = d.concat(d_all[i] / accumulation);
+                    d = d.concat(d_all[i] / collect_all_count[i]);
                     d = d.concat(" ");
                 }
                 console.log(ge);
@@ -1090,28 +1095,40 @@ function record_each100_point(d_error, move_d) {
     var n = 2,
         A = -50; //n:path-loss exponent, A:RSSI per unit
     var rssi = A - 10 * n * Math.log10(dist);
-
-    if (targetX == 350  && restart_count==0) {
-
-        //Collect Rssi
-        g_all.push(g_rssiFiltered);
-        m_all.push(m_rssiFiltered);
-        k_all.push(k_rssiFiltered);
-        d_all.push(rssi);
     
-        guess_error.push(d_error); //Predict Position to Target Error
-        total_distance.push(move_d); //Total move distance
- 
-    } else {
-        
-        g_all[step_count] += g_rssiFiltered;
-        m_all[step_count] += m_rssiFiltered;
-        k_all[step_count] += k_rssiFiltered;
-        d_all[step_count] += rssi;
-        guess_error[step_count] += d_error;
-        total_distance[step_count] += move_d;
+    if(!isNaN(g_rssiFiltered) && !isNaN(m_rssiFiltered) && !isNaN(k_rssiFiltered) && !isNaN(rssi) && !isNaN(d_error) && !isNaN(move_d)){
+
+        if (targetX == 350  && restart_count==0) {
+
+            //Collect Rssi
+            g_all.push(parseFloat(g_rssiFiltered.toFixed(6)));
+            m_all.push(parseFloat(m_rssiFiltered.toFixed(6)));
+            k_all.push(parseFloat(k_rssiFiltered.toFixed(6)));
+            d_all.push(parseFloat(rssi.toFixed(6)));
+
+            guess_error.push(parseFloat(d_error.toFixed(6))); //Predict Position to Target Error
+            total_distance.push(parseFloat(move_d.toFixed(6))); //Total move distance
+            
+            collect_all_count.push(1);
+
+
+        } else {
+
+            g_all[step_count] += parseFloat(g_rssiFiltered.toFixed(6));
+            m_all[step_count] += parseFloat(m_rssiFiltered.toFixed(6));
+            k_all[step_count] += parseFloat(k_rssiFiltered.toFixed(6));
+            d_all[step_count] += parseFloat(rssi.toFixed(6));
+            guess_error[step_count] += parseFloat(d_error.toFixed(6));
+            total_distance[step_count] += parseFloat(move_d.toFixed(6));
+            
+            collect_all_count[step_count] += 1;
+
+        }
+        //console.log(total_distance[0]);
     }
-    //console.log(total_distance[0]);
+    else{
+        console.log("NaN");
+    }
 
 
 }
