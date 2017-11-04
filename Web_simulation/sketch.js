@@ -86,7 +86,7 @@ for (var i = 0; i < 100; i++) {
     collect_all_count[i] = 0
     loczlization_error[i] = [];
     for (var j = 0; j < 101; j++) {
-        loczlization_error[i][j] = "loczlization_error";
+        loczlization_error[i][j] = "";
     }
 
 }
@@ -229,7 +229,7 @@ function mousePressed() {
 
             pre_radius = radius;
 
-            var dist_error = Math.round(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
+            var dist_error = Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5);
             
             loczlization_error[step_count][restart_count] = loczlization_error[step_count][restart_count].concat(" ");
             loczlization_error[step_count][restart_count] = (loczlization_error[step_count][restart_count]).concat(parseFloat(dist_error.toFixed(7)));
@@ -247,7 +247,7 @@ function mousePressed() {
 
 
             //Show Result
-            if (step_count == 99 && restart_count == 100 && targetX == 353) {
+            if (step_count == 99 && restart_count == 100 && targetX == 650) {
 
                 for (var i = 0; i < g_all.length; i++) {
                     ge = ge.concat((guess_error[i] / collect_all_count[i]).toFixed(7));
@@ -993,7 +993,7 @@ function gaussFilter(arrayRSSI) {
     std = pow(std / len, 0.5);
 
     for (var i = 0; i < len; i++) {
-        if (u + 1 * std >= arrayRSSI[i] && arrayRSSI[i] >= u - 1 * std) {
+        if (u + 1.5 * std >= arrayRSSI[i] && arrayRSSI[i] >= u - 1.5 * std) {
             gau_result += arrayRSSI[i];
             count++;
         }
