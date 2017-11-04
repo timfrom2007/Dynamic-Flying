@@ -28,7 +28,11 @@ var restart_count = 0; //計算單點總共重新幾次，0表第一次
 var accumulation = 0;
 
 
+var move_distance = 20;
+
+
 var rssi_filter = [];
+var g_rssiFiltered = [];
 
 
 var speed; //單位m/s
@@ -40,6 +44,8 @@ var map_count = [];
 
 
 var map_width = 0;
+
+var map_count_all = 0;
 
 for (var i = 0; i < 2000; i++) {
     map_weight[i] = [];
@@ -62,25 +68,58 @@ var g_all = [];
 var m_all = [];
 var k_all = [];
 var d_all = [];
+var loczlization_error = [];
 var g = "Gauss Filter: ";
 var m = "Median Filter: ";
 var k = "Kalman Filter: ";
 var d = "RSSI: ";
-
 var collect_all_count = [];
 
 
+for (var i = 0; i < 100; i++) {
+    guess_error[i] = 0;
+    total_distance[i] = 0;
+    g_all[i] = 0;
+    m_all[i] = 0;
+    k_all[i] = 0;
+    d_all[i] = 0;
+    collect_all_count[i] = 0
+    loczlization_error[i] = [];
+    for (var j = 0; j < 101; j++) {
+        loczlization_error[i][j] = "loczlization_error";
+    }
+
+}
+
 function setup() {
     createCanvas(2000, 1200);
+    getFakeRSSI(currentX, currentY);
+
+    var gg = "",
+        gg_d = "";
+    var kk = "",
+        kk_d = "";
+    var mm = "",
+        mm_d = "";
+    var m_rssi_filter = [];
 
 
     for (var i = 0; i < 100; i++) {
         var fakeRssi = getFakeRSSI(currentX, currentY);
         rssi_filter.push(fakeRssi);
+        m_rssi_filter.push(fakeRssi);
+        g_rssiFiltered.push(gaussFilter(rssi_filter));
     }
-    var k_rssiFiltered = kalmanFilter(rssi_filter);
+
+    var k_rssiFiltered = kalmanFilter(g_rssiFiltered);
+    g_rssiFiltered = [];
     radius = rssiToDist(k_rssiFiltered);
+
+
+
+
     rssi_filter = [];
+
 
     map_width = radius * 1.2; //Local matrix width
     //console.log(radius);
@@ -135,80 +174,101 @@ function mousePressed() {
     while (targetX <= 650) {
 
         if (step_count < 100) {
-            var descision = turnDecision(currentX, currentY, prepointX, prepointY);
 
-            
+            try {
+                var descision = turnDecision(currentX, currentY, prepointX, prepointY);
+            } catch (e) {
+                console.log(e) // 把例外物件傳給錯誤處理器
+            }
+
+
+
             if (preturn == 1) {
                 preturn = descision;
             }
 
             //console.log(radius);
-            
+
+
             var move_distance = 20;
             if (radius / (map_width / 1.2) <= 0.5) {
                 move_distance = 20 * (radius / (map_width / 1.2)) * 2;
             }
 
 
+            
             for (var i = 0; i < 100; i++) {
                 var fakeRssi = getFakeRSSI(currentX, currentY);
                 rssi_filter.push(fakeRssi);
+                g_rssiFiltered.push(gaussFilter(rssi_filter));
             }
-            var rssiFiltered = kalmanFilter(rssi_filter);
+            var rssiFiltered = kalmanFilter(g_rssiFiltered);
+            
             radius = rssiToDist(rssiFiltered);
 
 
+
+
             flightMove(currentX, currentY, turnCase, descision, move_distance);
+            //twoleaf_FlightMove(currentX, currentY, turnCase, descision, move_distance);
             drawpoint(currentX, currentY, 100);
 
+            try {
+                addWeight(currentX, currentY, prepointX, prepointY, radius, pre_radius);
+            } catch (e) {
 
-            addWeight(currentX, currentY, prepointX, prepointY, radius, pre_radius);
+                console.log(e) // 把例外物件傳給錯誤處理器
+            }
+
+
+
 
             var large = large = [0, 0, 0, 0];
             predictPosition(large);
             cleanMap();
-            
+
             pre_radius = radius;
 
             var dist_error = Math.round(Math.pow(Math.pow((large[1] - targetX), 2) + Math.pow((large[2] - targetY), 2), 0.5));
+            
+            loczlization_error[step_count][restart_count] = loczlization_error[step_count][restart_count].concat(" ");
+            loczlization_error[step_count][restart_count] = (loczlization_error[step_count][restart_count]).concat(parseFloat(dist_error.toFixed(7)));
+            
+            
 
             record_each100_point(dist_error, move_distance);
+            g_rssiFiltered = [];
             rssi_filter = [];
-            
-            if(restart_count == 100 && step_count == 99){
-                console.log(accumulation/(step_count+1));
+
+            if (restart_count == 100 && step_count == 99) {
+                console.log(accumulation / (step_count + 1));
             }
 
 
 
             //Show Result
-            if (step_count == 99 && restart_count == 100 && targetX == 650) {
-                
+            if (step_count == 99 && restart_count == 100 && targetX == 353) {
+
                 for (var i = 0; i < g_all.length; i++) {
-                    ge = ge.concat(guess_error[i] / collect_all_count[i]);
+                    ge = ge.concat((guess_error[i] / collect_all_count[i]).toFixed(7));
                     ge = ge.concat(" ");
-                    td = td.concat(total_distance[i] / collect_all_count[i]);
+                    td = td.concat((total_distance[i] / collect_all_count[i]).toFixed(7));
                     td = td.concat(" ");
-                    g = g.concat(g_all[i] / collect_all_count[i]);
-                    g = g.concat(" ");
-                    m = m.concat(m_all[i] / collect_all_count[i]);
-                    m = m.concat(" ");
-                    k = k.concat(k_all[i] / collect_all_count[i]);
+                    k = k.concat((k_all[i] / collect_all_count[i]).toFixed(7));
                     k = k.concat(" ");
-                    d = d.concat(d_all[i] / collect_all_count[i]);
+                    d = d.concat((d_all[i] / collect_all_count[i]).toFixed(7));
                     d = d.concat(" ");
                 }
                 console.log(ge);
                 console.log(td);
-                console.log(g);
-                console.log(m);
                 console.log(k);
                 console.log(d);
+                console.log(loczlization_error);
+                break;
             }
 
             step_count++;
             //console.log(step_count);
-
         } else {
             step_count = 0;
             restart();
@@ -216,6 +276,7 @@ function mousePressed() {
             console.log("restart_count:%s", restart_count);
         }
     }
+
 
 }
 
@@ -245,6 +306,8 @@ function distance(x1, y1, x2, y2) {
 function addWeight(currX, currY, preX, preY, cur_radius, pre_radius) {
 
     var r_matrix = rotation_matrix(currX, currY, preX, preY); //旋轉矩陣
+
+    map_count_all++;
 
 
     if (cur_radius - pre_radius > 0) { //半徑變大，表示遠離
@@ -387,97 +450,97 @@ function turnDecision(currX, currY, preX, preY) {
                         switch (turnCase) {
                             case 1:
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 2:
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 3:
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 4:
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 5:
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 6:
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 7:
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 8:
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
@@ -501,97 +564,97 @@ function turnDecision(currX, currY, preX, preY) {
                         switch (turnCase) {
                             case 1:
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 2:
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 3:
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 4:
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 5:
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 6:
                                 if (weight_i * split_line2 + constant2 >= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 < weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 7:
                                 if (weight_i * split_line1 + constant1 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 > weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
                             case 8:
                                 if (weight_i * split_line2 + constant2 <= weight_j) {
-                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[2] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 < weight_j && weight_i * split_line2 + constant2 > weight_j) {
-                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[1] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 if (weight_i * split_line1 + constant1 >= weight_j) {
-                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count[weight_i][weight_j];
+                                    turn_matrix[0] += map_weight[weight_i][weight_j] / map_count_all;
                                 }
                                 break;
 
@@ -821,16 +884,39 @@ function flightMove(currX, currY, turnCases, descision, move_distance) {
 
 }
 
+function twoleaf_FlightMove(currX, currY, turnCases, descision, move_distance) {
+
+
+    prepointX = currX;
+    prepointY = currY;
+
+    if (step_count < 20) {
+        currentX += (move_distance / 20) * (20 - step_count);
+        currentY += -(move_distance / 20) * (step_count);
+    } else if (20 <= step_count && step_count < 40) {
+        currentX += -(move_distance / 20) * (40 - step_count);
+        currentY += (move_distance / 20) * (step_count - 20);
+    } else if (40 <= step_count && step_count < 60) {
+        currentX += -(move_distance / 20) * (60 - step_count);
+        currentY += -(move_distance / 20) * (step_count - 40);
+    } else if (60 <= step_count && step_count < 80) {
+        currentX += (move_distance / 20) * (80 - step_count);
+        currentY += (move_distance / 20) * (step_count - 60);
+    }
+
+
+}
+
 
 function restart() {
-    
-    if(restart_count==100){
+
+    if (restart_count == 100) {
         targetX += 3;
-        targetY = 500 - Math.round(Math.sqrt( Math.pow(150, 2) - Math.pow(targetX - 500, 2)));
+        targetY = 500 - Math.round(Math.sqrt(Math.pow(150, 2) - Math.pow(targetX - 500, 2)));
         restart_count = 0;
         console.log("Tar: %s, %s", targetX, targetY);
     }
-    
+
     restart_count++;
     currentX = 500;
     currentY = 500;
@@ -852,8 +938,10 @@ function restart() {
             map_count[i][j] = 0;
         }
     }
-    
-    
+
+    map_count_all = 0;
+
+
 }
 
 function createArray(length) {
@@ -925,7 +1013,7 @@ function meidanFilter(arrayRSSI) {
     if (arrayRSSI.length % 2 == 0) {
         m_result = (arrayRSSI[(arrayRSSI.length / 2)] + arrayRSSI[(arrayRSSI.length / 2) - 1]) / 2;
     } else {
-        m_result = arrayRSSI[(arrayRSSI.length / 2)];
+        m_result = arrayRSSI[floor((arrayRSSI.length / 2))];
     }
 
     return m_result;
@@ -974,14 +1062,15 @@ function getFakeRSSI(currX, currY) {
         A = -50; //n:path-loss exponent, A:RSSI per unit
     var noise = 0.0;
     if (dist >= 100) {
-        noise = normalRandomScaled(noise, 80);
+        noise = normalRandomScaled(noise, 120);
     } else if (100 > dist >= 50) {
-        noise = normalRandomScaled(noise, 40);
+        noise = normalRandomScaled(noise, 60);
     } else if (50 > dist >= 20) {
-        noise = normalRandomScaled(noise, 20);
+        noise = normalRandomScaled(noise, 30);
     } else if (20 > dist) {
-        noise = normalRandomScaled(noise, 10);
+        noise = normalRandomScaled(noise, 15);
     }
+
 
     var rssi = A - 10 * n * Math.log10(dist) + noise;
 
@@ -1007,7 +1096,7 @@ function predictPosition(large) {
     for (var i = 0; i < map_weight.length; i++) {
         for (var j = 0; j < map_weight[i].length; j++) {
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {
+                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.8) {
                     predictDistance = distance(i, j, currentX, currentY);
                     distError = Math.abs(predictDistance - radius);
                     if (distError <= threshold) {
@@ -1022,7 +1111,7 @@ function predictPosition(large) {
     for (var i = 0; i < map_weight.length; i++) {
         for (var j = 0; j < map_weight[i].length; j++) {
             if (map_weight[i][j] > 0 && map_count[i][j] > 0) {
-                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.9) {
+                if (map_weight[i][j] / map_count[i][j] >= large[0] * 0.8) {
                     predictDistance = distance(i, j, currentX, currentY);
                     distError = Math.abs(predictDistance - radius);
                     if (distError * 0.9 <= threshold) { //Hard Cord
@@ -1055,6 +1144,7 @@ function cleanMap() {
                 map_count[i][j] = 0;
             }
         }
+        map_count_all = 0;
         re_calculate_weight_dist_more_100 = 0;
     }
 
@@ -1067,6 +1157,7 @@ function cleanMap() {
                 map_count[i][j] = 0;
             }
         }
+        map_count_all = 0;
         re_calculate_weight = 1;
     } else if (radius <= (map_width / 1.2) / 4 && re_calculate_weight == 1) {
         large = [0, 0, 0, 0];
@@ -1078,26 +1169,36 @@ function cleanMap() {
                 map_count[i][j] = 0;
             }
         }
+        map_count_all = 0;
         re_calculate_weight = 2;
     }
 
 }
 
 function record_each100_point(d_error, move_d) {
-    
+
     accumulation++;
-    
-    var g_rssiFiltered = gaussFilter(rssi_filter);
-    var k_rssiFiltered = kalmanFilter(rssi_filter);
-    var m_rssiFiltered = meidanFilter(rssi_filter);
-    
+
+
+    var k_rssiFiltered = kalmanFilter(g_rssiFiltered);
+
+
     var dist = distance(currentX, currentY, targetX, targetY);
     var n = 2,
         A = -50; //n:path-loss exponent, A:RSSI per unit
     var rssi = A - 10 * n * Math.log10(dist);
-    
-    if(!isNaN(g_rssiFiltered) && !isNaN(m_rssiFiltered) && !isNaN(k_rssiFiltered) && !isNaN(rssi) && !isNaN(d_error) && !isNaN(move_d)){
 
+    if (!isNaN(k_rssiFiltered) && !isNaN(rssi) && !isNaN(d_error) && !isNaN(move_d)) {
+
+        k_all[step_count] += parseFloat(k_rssiFiltered.toFixed(7));
+        d_all[step_count] += parseFloat(rssi.toFixed(7));
+        guess_error[step_count] += parseFloat(d_error.toFixed(7));
+        total_distance[step_count] += parseFloat(move_d.toFixed(7));
+
+        collect_all_count[step_count] += 1;
+
+
+        /*
         if (targetX == 350  && restart_count==0) {
 
             //Collect Rssi
@@ -1124,10 +1225,10 @@ function record_each100_point(d_error, move_d) {
             collect_all_count[step_count] += 1;
 
         }
+        */
         //console.log(total_distance[0]);
-    }
-    else{
-        console.log("NaN");
+    } else {
+        //console.log("NaN");
     }
 
 
