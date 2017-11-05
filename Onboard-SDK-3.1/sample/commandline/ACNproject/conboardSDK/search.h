@@ -9,6 +9,8 @@
 #include <iwlib.h>
 #include <algorithm>
 #include <typeinfo>
+#include <iomanip>
+
 
 #include "DJI_API.h"
 #include "DJI_Type.h"

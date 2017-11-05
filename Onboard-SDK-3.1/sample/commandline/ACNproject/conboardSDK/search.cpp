@@ -2,12 +2,11 @@
 #define _PI_ 3.14159265358979323846
 double latitude(const Flight *flight)
 {
-    printf("%lf    ", flight->getPosition().longitude);
     return flight->getPosition().latitude;
 }
 double longitude(const Flight *flight)
 {
-    printf("%lf", flight->getPosition().longitude);
+    cout << "YOYO" <<  setprecision(20) << flight->getPosition().longitude << endl;
     return flight->getPosition().longitude;
 }
 double altitude(const Flight *flight)
