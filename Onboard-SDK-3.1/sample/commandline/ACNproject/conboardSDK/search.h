@@ -24,17 +24,17 @@ using namespace DJI::onboardSDK;
 
 struct PointData
 {
-    float64_t latitude = 0.0;
-    float64_t longitude = 0.0;
-    float64_t altitude = 0.0;
+    double latitude = 0.0;
+    double longitude = 0.0;
+    double altitude = 0.0;
     double RSSI = 0.0;
     double total_moveDist=0.0;
     double error_dist = 0.0;
     time_t timeStamp = 0;
     clock_t ctimeStamp = 0;
     int startSearch = 0;
-    float64_t guessLatitude =0.0;
-    float64_t guessLongitude = 0.0;
+    double guessLatitude =0.0;
+    double guessLongitude = 0.0;
 };
 
 struct GuessPosition
@@ -59,10 +59,6 @@ double longitude(const Flight* flight);
 double altitude(const Flight* flight);
 double getYaw(const Flight* flight);
 void control(VirtualRC *vrc ,int pitch,int roll);
-//PointData calculatePos(vector<PointData> *record); //Pure RSSI
-//PointData calculatePos2(vector<PointData> *record); //Differential RSSI
-//PointData calculatePos3(vector<PointData> *record); //Trilateration
-//PointData calculatePos4(vector<PointData> *record); //Modified Differential RSSI
 void takeOff(VirtualRC *vrc);
 void *collectRSSI(void *ptr);
 vector<PointData> goFind(CoreAPI *api,const char *pathFile, double distPercent);
@@ -74,9 +70,9 @@ double normalDistribution();
 void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw);
 double moveDistance_to_speed(double move_distance);
 double distance(int x1, int y1, int x2, int y2);
-void addWeight(double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);
+void addWeight(double startX, double startY, double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);
 double calConstant(double x, double y, double m);
-int turnDecision(double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);
+int turnDecision(double startX, double startY, double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);
 //void nextWayPoint(WayPoint waypoint, double lat, double lon);
 //void initWayPoint(WayPoint waypoint);
 void coordinateChanger(double xt, double yt, vector<double> x_matrix, vector<double> y_matrix, vector<double> lat_matrix, vector<double> lon_matrix);

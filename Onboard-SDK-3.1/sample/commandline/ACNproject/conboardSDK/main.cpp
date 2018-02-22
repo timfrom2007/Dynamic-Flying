@@ -44,13 +44,8 @@ int main(int argc, char *argv[])
 
 
     const Flight *flight = new Flight(&api);
-    printf("lat:%lf\n",latitude(flight));
-    printf("lon:%lf\n",longitude(flight));
-
-
-    //double a,b;
-    //cin>>a>>b;
-    //cout<<getFakeRSSI(flight,a,b,0);
+    printf("lat:%.10lf\n",latitude(flight));
+    printf("lon:%.10lf\n",longitude(flight));
 
     /*  ---- flight ---- */
 
@@ -60,8 +55,8 @@ int main(int argc, char *argv[])
 
     FILE *log = fopen("./log.txt","w");
     for(int i=0;i<record.size();i++){  //Lat, Lon ,Alti, RSSI, moveDistance, gusLat, gusLon, errDist, time
-        printf("%lf %lf %lf %lf %lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude, record[i].RSSI, record[i].total_moveDist, record[record.size()-1].guessLatitude, record[record.size()-1].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
-        fprintf(log,"%lf %lf %lf %lf %lf %lf %lf %lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].total_moveDist, record[record.size()-1].guessLatitude, record[record.size()-1].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
+        printf("%.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude, record[i].RSSI, record[i].total_moveDist, record[record.size()-1].guessLatitude, record[record.size()-1].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
+        fprintf(log,"%.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].total_moveDist, record[record.size()-1].guessLatitude, record[record.size()-1].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
     }
     fclose(log);
     /*
