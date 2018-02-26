@@ -41,8 +41,8 @@ struct GuessPosition
 {
     float64_t latitude = 0.0;
     float64_t longitude = 0.0;
-    int xt;
-    int yt;
+    double xt=0.0;
+    double yt=0.0;
     double threshold=0.0;
 };
 
@@ -57,8 +57,13 @@ double median_filter(double* rssi);
 double latitude(const Flight* flight);
 double longitude(const Flight* flight);
 double altitude(const Flight* flight);
+double flight_height(const Flight* flight);
 double getYaw(const Flight* flight);
 void control(VirtualRC *vrc ,int pitch,int roll);
+//PointData calculatePos(vector<PointData> *record); //Pure RSSI
+//PointData calculatePos2(vector<PointData> *record); //Differential RSSI
+//PointData calculatePos3(vector<PointData> *record); //Trilateration
+//PointData calculatePos4(vector<PointData> *record); //Modified Differential RSSI
 void takeOff(VirtualRC *vrc);
 void *collectRSSI(void *ptr);
 vector<PointData> goFind(CoreAPI *api,const char *pathFile, double distPercent);
@@ -77,8 +82,8 @@ int turnDecision(double startX, double startY, double currX, double currY, doubl
 //void initWayPoint(WayPoint waypoint);
 void coordinateChanger(double xt, double yt, vector<double> x_matrix, vector<double> y_matrix, vector<double> lat_matrix, vector<double> lon_matrix);
 void flightMove(double* currentX, double* currentY, double* preX, double* preY, int descision, double move_distance, double curYaw);
-vector<GuessPosition> predictPos(double** map_weight, int** map_count, double currR, double currX, double currY, int height);
+GuessPosition predictPos(double** map_weight, int** map_count, double currR, double currX, double currY, int height);
 double leastSquare(double xyt, vector<double> &xy_matrix, vector<double> &latlon_matrix);
-void gaussFilter(vector<PointData> record, int *predictCount);
+double gaussFilter(vector<double> gauss);
 double kalman_filter(double* rssi);
 int out4in5(double x);

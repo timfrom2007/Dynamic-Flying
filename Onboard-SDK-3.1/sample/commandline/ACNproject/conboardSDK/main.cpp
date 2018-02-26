@@ -46,7 +46,10 @@ int main(int argc, char *argv[])
     const Flight *flight = new Flight(&api);
     printf("lat:%.10lf\n",latitude(flight));
     printf("lon:%.10lf\n",longitude(flight));
-
+    printf("Alt:%.10lf\n",altitude(flight));
+    printf("Height:%.10lf\n",flight_height(flight));
+    
+    
     /*  ---- flight ---- */
 
     cout<<"Pass ENTER to goFind() ..."<<endl;fgetc(stdin);
@@ -55,8 +58,11 @@ int main(int argc, char *argv[])
 
     FILE *log = fopen("./log.txt","w");
     for(int i=0;i<record.size();i++){  //Lat, Lon ,Alti, RSSI, moveDistance, gusLat, gusLon, errDist, time
-        printf("%.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude, record[i].RSSI, record[i].total_moveDist, record[record.size()-1].guessLatitude, record[record.size()-1].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
-        fprintf(log,"%.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %.10lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].total_moveDist, record[record.size()-1].guessLatitude, record[record.size()-1].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
+        
+            printf("%.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude, record[i].RSSI, record[i].total_moveDist, record[i].guessLatitude, record[i].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
+            fprintf(log,"%.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].total_moveDist, record[i].guessLatitude, record[i].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
+        
+        
     }
     fclose(log);
     /*
