@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
 
     /* ---- initial ---- */
 
-    HardDriverManifold driver("/dev/ttyAMA0", 230400);
+    HardDriverManifold driver("/dev/ttyAMA0", 230400);  //利用ttyAMA0來跟無人機溝通，這邊指UART
     driver.init();
     CoreAPI api(&driver);
     APIThread send(&api, 1);
@@ -43,39 +43,28 @@ int main(int argc, char *argv[])
     /* ---- initial ---- */
 
 
-    const Flight *flight = new Flight(&api);
+    const Flight *flight = new Flight(&api);  //用以讀取無人機目前狀態
     printf("lat:%.10lf\n",latitude(flight));
     printf("lon:%.10lf\n",longitude(flight));
     printf("Alt:%.10lf\n",altitude(flight));
     printf("Height:%.10lf\n",flight_height(flight));
-    
-    
+
+
     /*  ---- flight ---- */
 
     cout<<"Pass ENTER to goFind() ..."<<endl;fgetc(stdin);
-    vector<PointData> record = planPath(&api);
+    vector<PointData> record = planPath(&api);  //使用search.h內的planPath開始搜尋
     cout<< "goFind() finish" << endl;
 
     FILE *log = fopen("./log.txt","w");
     for(int i=0;i<record.size();i++){  //Lat, Lon ,Alti, RSSI, moveDistance, gusLat, gusLon, errDist, time
-        
+
             printf("%.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude, record[i].RSSI, record[i].total_moveDist, record[i].guessLatitude, record[i].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
             fprintf(log,"%.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %.13lf %d\n",record[i].latitude,record[i].longitude,record[i].altitude,record[i].RSSI, record[i].total_moveDist, record[i].guessLatitude, record[i].guessLongitude, record[i].error_dist, record[i].ctimeStamp);
-        
-        
+
+
     }
     fclose(log);
-    /*
-    PointData p = calculatePos(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    p = calculatePos2(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    p =calculatePos3(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    p =calculatePos4(&record);
-    printf("lat:%lf lon:%lf\n",p.latitude,p.longitude);
-    */
-    /* ---- flight ----  */
 
 
     cout<<"Pass ENTER to exit ..."<<endl;fgetc(stdin);

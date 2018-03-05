@@ -22,6 +22,8 @@
 using namespace std;
 using namespace DJI::onboardSDK;
 
+
+//紀錄飛行時所經過各節點資訊
 struct PointData
 {
     double latitude = 0.0;
@@ -37,6 +39,7 @@ struct PointData
     double guessLongitude = 0.0;
 };
 
+//紀錄飛行時所經過各節點後，根據節點訊息猜測定位位置
 struct GuessPosition
 {
     float64_t latitude = 0.0;
@@ -52,27 +55,28 @@ struct CollectThreadParams
     const Flight *flight;
     bool isFlying = true;
 };
-
+//中位數濾波，傳入陣列
 double median_filter(double* rssi);
+
+//取得無人機緯度。預設小數點後六位，實際可以到15位
 double latitude(const Flight* flight);
+
+//取得無人機經度。預設小數點後六位，實際可以到15位
 double longitude(const Flight* flight);
+
+//取得無人機高度。 在模擬時可精準取得，然而在實際飛行時會得到負數
 double altitude(const Flight* flight);
-double flight_height(const Flight* flight);
-double getYaw(const Flight* flight);
-void control(VirtualRC *vrc ,int pitch,int roll);
-//PointData calculatePos(vector<PointData> *record); //Pure RSSI
-//PointData calculatePos2(vector<PointData> *record); //Differential RSSI
-//PointData calculatePos3(vector<PointData> *record); //Trilateration
-//PointData calculatePos4(vector<PointData> *record); //Modified Differential RSSI
-void takeOff(VirtualRC *vrc);
-void *collectRSSI(void *ptr);
-vector<PointData> goFind(CoreAPI *api,const char *pathFile, double distPercent);
-double getFakeRSSI(const Flight *flight,double la,double lo,double al,int startSearch);
-double earth_distance(double lat1, double lon1, double lat2, double lon2, char unit);
-double rssiToDist(double rssi, double altitude);
+double flight_height(const Flight* flight);  //取得無人機高度。與altitude不同，在實際飛行時使用這個
+double getYaw(const Flight* flight);  //取得目前無人機自身旋轉角度
+void control(VirtualRC *vrc ,int pitch,int roll);  //用以控制無人機前後左右移動
+void *collectRSSI(void *ptr);  //用以蒐集RSSI
+vector<PointData> goFind(CoreAPI *api,const char *pathFile, double distPercent);  //根據所提供飛行腳本，丟入control()執行飛行
+double getFakeRSSI(const Flight *flight,double la,double lo,double al,int startSearch);  //根據距離得到一個包含雜訊的RSSI
+double earth_distance(double lat1, double lon1, double lat2, double lon2, char unit); //依兩點經緯度計算其距離
+double rssiToDist(double rssi, double altitude);  //將RSSI轉換成距離
 vector<PointData> planPath(CoreAPI *api); //Planning Path
-double normalDistribution();
-void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw);
+double normalDistribution();  //給一個常態分布的數值
+void rotation_matrix(double currX, double currY, double preX, double preY, vector<double> &r_matrix, double curYaw);  //根據curYaw，無人機自己旋轉角度，
 double moveDistance_to_speed(double move_distance);
 double distance(int x1, int y1, int x2, int y2);
 void addWeight(double startX, double startY, double currX, double currY, double preX, double preY, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height);

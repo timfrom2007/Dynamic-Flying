@@ -6,7 +6,6 @@ double latitude(const Flight *flight)
 }
 double longitude(const Flight *flight)
 {
-    //cout << "YOYO" <<  setprecision(20) << flight->getPosition().longitude << endl;
     return flight->getPosition().longitude;
 }
 double altitude(const Flight *flight)
@@ -32,22 +31,6 @@ void control(VirtualRC *vrc,int pitch,int yaw)
     vdata.roll = 1024; //+ roll;
     vrc->sendData(vdata);
 }
-void takeOff(VirtualRC *vrc)
-{
-    VirtualRCData vdata;
-    vdata.roll = 1024-660;
-    vdata.pitch = 1024-660;
-    vdata.throttle = 1024-660;
-    vdata.yaw = 1024+660;
-    vrc->sendData(vdata);
-    sleep(5);
-
-    VirtualRCData vdata2;
-    vdata2.throttle = 1024+330;
-    vrc->sendData(vdata2);
-    sleep(5);
-}
-
 void *collectRSSI(void *ptr)
 {
     CollectThreadParams *params = (CollectThreadParams*)ptr;
@@ -56,6 +39,10 @@ void *collectRSSI(void *ptr)
 
     while(params->isFlying)
     {
+/*
+        //////////////////////////////////////////////////////////
+        /////以當前距離，反推得到一個加入雜訊的Fake RSSI//////////
+        //////////////////////////////////////////////////////////
         usleep(100*1000);
         PointData p;
         p.latitude = latitude(params->flight);
@@ -68,14 +55,14 @@ void *collectRSSI(void *ptr)
         } filter;
 
 
-        
+
         double collect[1000];
         int i=0;
         while(i<1000)
         {
             //collect[i] = getFakeRSSI(params->flight,0.43648972424, 2.12120737396, 0, p.startSearch); //Hard Cord
             collect[i] = getFakeRSSI(params->flight,0.43648975113, 2.12119927893, 0, p.startSearch); //Hard Cord
-            
+
             //collect[i] = getFakeRSSI(params->flight,0.393449,1.988961, 0, p.startSearch); //Hard Cord
             i++;
         }
@@ -85,9 +72,9 @@ void *collectRSSI(void *ptr)
         record->push_back(p);
         return 0;
     }
+*/
 
-/*
- 
+
         iwrange range;
         int sock;
         wireless_info info;
@@ -121,7 +108,7 @@ void *collectRSSI(void *ptr)
         return 0;
     }
 
-*/
+
 
 }
 
@@ -150,13 +137,13 @@ vector<PointData> planPath(CoreAPI *api)
     double Xa=0.0, Ya=0.0, Xb=0.0, Yb=0.0, Xt=0.0, Yt=0.0, LatA=0.0, LonA=0.0, LatB=0.0, LonB=0.0; //For CoordinateChanger
     double tol_moveDist = 0.0, err_dist=0.0;
     double moveDistance =0.0, cur_radius=0.0, pre_radius=0.0;
-    
+
     vector<double> vec_predictX;  //predictX vector
     vector<double> vec_predictY;  //predictY vector
-    
-    
+
+
     vector<double> r_matrix;  //rotation matrix
-    
+
     vector<double> x_matrix;  //history x coordinate
     vector<double> y_matrix;  //history y coordinate
     vector<double> lat_matrix, lon_matrix;  //history lat, lon coordinate
@@ -276,25 +263,25 @@ vector<PointData> planPath(CoreAPI *api)
             //coordinateChanger(predictX, predictY, x_matrix, y_matrix, lat_matrix, lon_matrix);  //坐標系轉換
             cout << "predictX:" << predictX << endl;
             cout << "predictY:" << predictY << endl;
-            
+
 
             predictLon = leastSquare(predictX, x_matrix, lon_matrix);
             predictLat = leastSquare(predictY, y_matrix, lat_matrix);
             err_dist = earth_distance(0.43648975113, 2.12119927893, predictLat, predictLon, 'K') * 1000;
-            
+
             record[record.size()-1].error_dist = err_dist;
             record[record.size()-1].guessLatitude = predictLat;
             record[record.size()-1].guessLongitude = predictLon;
-            
+
             printf("predictLat:%.10lf, predictLon:%.10lf, err_dist:%.10lf\n ", predictLat, predictLon, err_dist);
             x_matrix.erase(x_matrix.begin());
             y_matrix.erase(y_matrix.begin());
             lon_matrix.erase(lon_matrix.begin());
             lat_matrix.erase(lat_matrix.begin());
-            
+
         }
 
-        
+
 
         descision = turnDecision(startX, startY, currX, currY, preX, preY, &preturn, &bool_predecision, &turnCase, cur_radius, pre_radius, map_weight, map_count, r_matrix, height);
 
@@ -341,7 +328,7 @@ vector<PointData> planPath(CoreAPI *api)
 
 
         //若接近到原始距離的一半，權重重新分配
-        
+
         if(cur_radius < (recount_threshode/3))   //Hard Cord
         {
             for(i=0; i<width; i++)
@@ -353,8 +340,8 @@ vector<PointData> planPath(CoreAPI *api)
             }
             recount_threshode = cur_radius;
         }
-        
-        
+
+
 
         preLat = currLat;
         preLon = currLon;
@@ -500,7 +487,7 @@ double earth_distance(double lat1, double lon1, double lat2, double lon2, char u
 void coordinateChanger(double xt, double yt, vector<double> x_matrix, vector<double> y_matrix, vector<double> lat_matrix, vector<double> lon_matrix)   //XY coordinate to Lon,Lat coordinate
 {
 
-    
+
 
 
 
@@ -702,16 +689,16 @@ double calConstant(double x, double y, double m)
 int turnDecision(double startX, double startY, double currX, double currY, double preX, double preY, int* preturn, int* bool_predecision, int* turnCase, double cur_radius, double pre_radius, double** map_weight, int** map_count, vector<double> r_matrix, int height)
 {
     double turn_matrix[3] = {0.0, 0.0, 0.0};
-    
+
     double slope=0.0;
     double split_line1=0.0;
     double split_line2=0.0;
-    
+
     split_line1 = (1 / sqrt(3));
     split_line2 = (-1 / sqrt(3));
     double constant1 = calConstant(currX, currY, split_line1);
     double constant2 = calConstant(currX, currY, split_line2);
-    
+
     int deltaX = currX - preX;
     int deltaY = currY - preY;
     if (deltaX > 5 && deltaY > 5)
@@ -746,20 +733,20 @@ int turnDecision(double startX, double startY, double currX, double currY, doubl
     {
         *turnCase = 8;
     }
-    
+
     int wi=0;
     int wj=0;
-    
+
     for (int i = currX - cur_radius - 5; i <= currX + cur_radius + 5; i++)
     {
-        
-        
+
+
         for (int j = currY; j <= currY + cur_radius + 5; j++)
         {
-            
+
             wi = out4in5((i - currX) * (r_matrix[0]) + (j - currY) * (-r_matrix[1]) + currX);
             wj = out4in5((i - currX) * (-r_matrix[2]) + (j - currY) * (r_matrix[3]) + currY);
-            
+
             if (startX+height-1 > wi && wi>=0 && startY <= wj && wj<startY+height-1)
             {
                 if (map_weight[wi][wj] > 0)
@@ -808,9 +795,9 @@ int turnDecision(double startX, double startY, double currX, double currY, doubl
         return 1;
     }
   */
-    
-    
-    
+
+
+
 /*
     double turn_matrix[3] = {0.0, 0.0, 0.0};
 
@@ -1367,7 +1354,7 @@ GuessPosition predictPos(double** map_weight, int** map_count, double currR, dou
     g.threshold = distError;
 
     return g;
- 
+
 }
 
 
@@ -1399,29 +1386,29 @@ double leastSquare(double xyt, vector<double> &xy_matrix, vector<double> &latlon
 double gaussFilter(vector<double> gauss)
 {
     double u = 0.0, std = 0.0, len = gauss.size(), count = 0, gau_result = 0.0;
-    
+
     for (int i = 0; i < len; i++) {
         u += gauss[i];
     }
     u = u / len;
-    
+
     for (int i = 0; i < len; i++) {
         std += pow(gauss[i] - u, 2);
     }
-    
+
     std = pow( (std/len) , 0.5);
-    
+
     for (int i = 0; i < len; i++) {
         if ((u + 1.5 * std) >= gauss[i] && gauss[i] >= (u - 1.5 * std)) {
             gau_result += gauss[i];
             count++;
         }
     }
-    
+
     gau_result = gau_result / count;
-    
+
     return gau_result;
-    
+
 }
 
 double kalman_filter(double* rssi)
