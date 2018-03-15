@@ -13,4 +13,9 @@ draw.py：帶入下面四個csv檔數值繪製實驗結果圖，程式比較簡�
 
 ---
 資料夾 Onboard-SDK-3.1<br>
-\sample\commandline\ACNproject：只需要看這個資料夾<br>
+\sample\commandline\ACNproject：只需要看這個資料夾，其他的是DJI所提供的範例<br><br>
+
+\sample\commandline\ACNproject\DJI Simulation log 資料夾中，其包含了實際飛行前，使用DJI Simulator所跑的的結果<br>
+\sample\commandline\ACNproject\DJI Real Fluing log 資料夾中，為實際飛行的結果<br>
+其儲存格式為[ UAV_latitude, UAV_longitude, UAV_altitude, RSSI, total_moveDist, guessLatitude, guessLongitude, error_dist, timeStamp]<br>
+
