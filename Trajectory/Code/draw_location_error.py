@@ -31,7 +31,7 @@ with open('target2.txt', 'r') as rfile: #0.43648975113_2.12119927893 Target2
         time2.append(int(line[8]))
 
 ax.plot(time,distError, lw=1, label='Lat:25.0090189-Lon:121.53623') #Target1
-ax.plot(time2,distError2, lw=1, label='Lat:25.0090205-Lon:121.53576') #Target2
+#ax.plot(time2,distError2, lw=1, label='Lat:25.0090205-Lon:121.53576') #Target2
 
 
 ax.legend()
